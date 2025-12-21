@@ -32,9 +32,26 @@ class Program
         {
             Console.WriteLine(args);
         }
+        else if (command == "type")
+        {
+            TypeCommand(args);
+        }
         else
         {
             Console.WriteLine($"{command}: command not found");
+        }
+    }
+
+    public static void TypeCommand(string args)
+    {
+        string[] availableCommands = ["echo", "type", "exit"];
+        if (availableCommands.Contains(args))
+        {
+            Console.WriteLine($"{args} is a shell builtin");
+        }
+        else
+        {
+            Console.WriteLine($"{args}: not found");
         }
     }
 }
