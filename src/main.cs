@@ -1,3 +1,5 @@
+using System.Runtime.InteropServices;
+
 class Program
 {
     static void Main()
@@ -42,16 +44,47 @@ class Program
         }
     }
 
+    static readonly string[] Builtins = ["echo", "type", "exit"];
     public static void TypeCommand(string args)
     {
-        string[] availableCommands = ["echo", "type", "exit"];
-        if (availableCommands.Contains(args))
+
+        if (Builtins.Contains(args))
         {
             Console.WriteLine($"{args} is a shell builtin");
+            return;
         }
-        else
+
+        string? pathEnv = Environment.GetEnvironmentVariable("PATH");
+        if (!string.IsNullOrEmpty(pathEnv))
         {
-            Console.WriteLine($"{args}: not found");
+            foreach (string dir in pathEnv.Split(':'))
+            {
+                if (string.IsNullOrWhiteSpace(dir))
+                    continue;
+
+                string fullPath = Path.Combine(dir, args);
+
+                if (File.Exists(fullPath))
+                {
+                    if (IsExecutable(fullPath))
+                    {
+                        Console.WriteLine($"{args} is {fullPath}");
+                        return;
+                    }
+                }
+            }
         }
+
+        Console.WriteLine($"{args}: not found");
     }
+
+    static bool IsExecutable(string path)
+    {
+        return access(path, X_OK) == 0;
+    }
+
+    const int X_OK = 1;
+
+    [DllImport("libc", SetLastError = true)]
+    static extern int access(string pathname, int mode);
 }
