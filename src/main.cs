@@ -75,7 +75,7 @@ class Program
                                args.Split(' ', StringSplitOptions.RemoveEmptyEntries));
             return;
         }
-        Console.WriteLine($"{command} {args} : command not found");
+        Console.WriteLine($"{command}: command not found");
     }
 
     static void RunExternalProgram(string path, string commandName,
