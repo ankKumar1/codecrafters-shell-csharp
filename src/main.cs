@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 class Program
@@ -55,31 +56,64 @@ class Program
             return;
         }
 
-        string? pathEnv = Environment.GetEnvironmentVariable("PATH");
-        if (!string.IsNullOrEmpty(pathEnv))
+        string fullPath = GetFullPath(args);
+        if (!string.IsNullOrEmpty(fullPath))
         {
-            foreach (string dir in pathEnv.Split(':'))
-            {
-                if (string.IsNullOrWhiteSpace(dir))
-                    continue;
-
-                string fullPath = Path.Combine(dir, args);
-
-                if (File.Exists(fullPath))
-                {
-                    if (IsExecutable(fullPath))
-                    {
-                        Console.WriteLine($"{args} is {fullPath}");
-                        return;
-                    }
-                }
-            }
+            Console.WriteLine($"{args} is {fullPath}");
+            return;
         }
 
         Console.WriteLine($"{args}: not found");
     }
 
-    public static void ExecuteFiles(string command, string args)
+    static void ExecuteFiles(string command, string args)
+    {
+        string fullPath = GetFullPath(command);
+        if (!string.IsNullOrEmpty(fullPath))
+        {
+            RunExternalProgram(fullPath, command,
+                               args.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+            return;
+        }
+        Console.WriteLine($"{command} {args} : command not found");
+    }
+
+    static void RunExternalProgram(string path, string commandName,
+                                string[] args)
+    {
+        // To properly set argv[0] to just the command name (not full path),
+        // we need to use exec -a through a shell
+        ProcessStartInfo startInfo = new ProcessStartInfo();
+        startInfo.FileName = "/bin/sh";
+
+        // Build the command: exec -a <commandName> <fullPath> <args...>
+        // exec -a allows us to set argv[0] explicitly
+        var escapedArgs = args.Select(a => $"'{a.Replace("'", "'\\''")}'");
+        var commandLine =
+            $"exec -a '{commandName}' '{path}' {string.Join(" ", escapedArgs)}";
+
+        startInfo.ArgumentList.Add("-c");
+        startInfo.ArgumentList.Add(commandLine);
+        startInfo.UseShellExecute = false;
+
+        try
+        {
+            // Start the process and wait for it to complete
+            using (Process process = Process.Start(startInfo))
+            {
+                // Wait for the external program to finish execution
+                process.WaitForExit();
+            }
+
+        }
+        catch (Exception ex)
+        {
+            // Display error message if program execution fails
+            Console.WriteLine($"Error running external program: {ex.Message}");
+        }
+    }
+
+    static string GetFullPath(string command)
     {
         string? pathEnv = Environment.GetEnvironmentVariable("PATH");
         if (!string.IsNullOrEmpty(pathEnv))
@@ -88,36 +122,14 @@ class Program
             {
                 if (string.IsNullOrWhiteSpace(dir))
                     continue;
-
                 string fullPath = Path.Combine(dir, command);
-                if (File.Exists(fullPath))
+                if (File.Exists(fullPath) && IsExecutable(fullPath))
                 {
-                    if (IsExecutable(fullPath))
-                    {
-                        try
-                        {
-                            var process = new System.Diagnostics.Process();
-                            process.StartInfo.FileName = fullPath;
-                            process.StartInfo.Arguments = args;
-                            process.StartInfo.UseShellExecute = false;
-                            process.StartInfo.RedirectStandardOutput = true;
-                            process.StartInfo.RedirectStandardError = true;
-                            process.Start();
-                            string output = process.StandardOutput.ReadToEnd();
-                            process.WaitForExit();
-                            if (!string.IsNullOrEmpty(output))
-                                Console.Write(output);
-                        }
-                        catch (Exception e)
-                        {
-                            Console.WriteLine($"{command}: {e.Message}");
-                        }
-                        return;
-                    }
+                    return fullPath;
                 }
             }
         }
-        Console.WriteLine($"{command} {args} : command not found");
+        return string.Empty;
     }
 
     static bool IsExecutable(string path)
