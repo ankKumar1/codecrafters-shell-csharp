@@ -1,9 +1,10 @@
+using codecraftersShell;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 class Program
 {
-    static readonly string[] Builtins = ["echo", "type", "exit", "pwd"];
+    static readonly string[] Builtins = ["echo", "type", "exit", "pwd", "cd"];
     const int X_OK = 1;
     static void Main()
     {
@@ -43,7 +44,11 @@ class Program
         }
         else if (command == "pwd")
         {
-            PwdCommand();
+            Navigation.PwdCommand();
+        }
+        else if (command == "cd")
+        {
+            Navigation.CdCommand(args);
         }
         else
         {
@@ -51,10 +56,7 @@ class Program
         }
     }
 
-    static void PwdCommand()
-    {
-        Console.WriteLine(Directory.GetCurrentDirectory());
-    }
+
 
     static void TypeCommand(string args)
     {
