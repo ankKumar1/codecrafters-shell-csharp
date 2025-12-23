@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 
 class Program
 {
-    static readonly string[] Builtins = ["echo", "type", "exit"];
+    static readonly string[] Builtins = ["echo", "type", "exit", "pwd"];
     const int X_OK = 1;
     static void Main()
     {
