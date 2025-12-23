@@ -41,13 +41,22 @@ class Program
         {
             TypeCommand(args);
         }
+        else if (command == "pwd")
+        {
+            PwdCommand();
+        }
         else
         {
             ExecuteFiles(command, args);
         }
     }
 
-    public static void TypeCommand(string args)
+    static void PwdCommand()
+    {
+        Console.WriteLine(Directory.GetCurrentDirectory());
+    }
+
+    static void TypeCommand(string args)
     {
 
         if (Builtins.Contains(args))
