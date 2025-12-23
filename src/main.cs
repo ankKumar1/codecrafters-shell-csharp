@@ -1,4 +1,3 @@
-using codecraftersShell;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
@@ -44,11 +43,11 @@ class Program
         }
         else if (command == "pwd")
         {
-            Navigation.PwdCommand();
+            PwdCommand();
         }
         else if (command == "cd")
         {
-            Navigation.CdCommand(args);
+            CdCommand(args);
         }
         else
         {
@@ -56,6 +55,34 @@ class Program
         }
     }
 
+    static void PwdCommand()
+    {
+        Console.WriteLine(Directory.GetCurrentDirectory());
+    }
+
+    static void CdCommand(string args)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(args) || args == "~")
+            {
+                string homePath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                Directory.SetCurrentDirectory(homePath);
+            }
+            else
+            {
+                Directory.SetCurrentDirectory(args);
+            }
+        }
+        catch (DirectoryNotFoundException)
+        {
+            Console.WriteLine($"cd: {args}: No such file or directory");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"cd: {ex.Message}");
+        }
+    }
 
 
     static void TypeCommand(string args)
