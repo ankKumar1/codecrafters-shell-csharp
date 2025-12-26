@@ -7,7 +7,6 @@ class Program
     const int X_OK = 1;
     static void Main()
     {
-        // TODO: Uncomment the code below to pass the first stage
         while (true)
         {
             Console.Write("$ ");
@@ -35,7 +34,7 @@ class Program
     {
         if (command == "echo")
         {
-            Console.WriteLine(args);
+            EchoCommand(args);
         }
         else if (command == "type")
         {
@@ -53,6 +52,43 @@ class Program
         {
             ExecuteFiles(command, args);
         }
+    }
+
+    static void EchoCommand(string input)
+    {
+        var args = new List<string>();
+        var current = new System.Text.StringBuilder();
+        bool inSingleQuote = false;
+
+        for (int i = 0; i < input.Length; i++)
+        {
+            char c = input[i];
+
+            if (c == '\'')
+            {
+                inSingleQuote = !inSingleQuote;
+                continue;
+            }
+
+            if (char.IsWhiteSpace(c) && !inSingleQuote)
+            {
+                if (current.Length > 0)
+                {
+                    args.Add(current.ToString());
+                    current.Clear();
+                }
+            }
+            else
+            {
+                current.Append(c);
+            }
+        }
+
+        if (current.Length > 0)
+            args.Add(current.ToString());
+
+        string result = string.Join(" ", args);
+        Console.WriteLine(result);
     }
 
     static void PwdCommand()
