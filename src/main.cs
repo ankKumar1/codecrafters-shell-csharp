@@ -56,17 +56,12 @@ class Program
 
     static void EchoCommand(string args)
     {
-        if (args.Contains('\''))
-        {
-            var argList = HandleSingleQuote(args);
-            Console.WriteLine(string.Join(' ', argList));
-            return;
-        }
-
-        Console.WriteLine(args);
+        var argList = HandleQuotes(args);
+        Console.WriteLine(string.Join(' ', argList));
+        return;
     }
 
-    static List<string> HandleSingleQuote(string input)
+    static List<string> HandleQuotes(string input)
     {
         var args = new List<string>();
         var current = new System.Text.StringBuilder();
@@ -157,14 +152,8 @@ class Program
         if (!string.IsNullOrEmpty(fullPath))
         {
             string[] argArray;
-            if (args.Contains('\''))
-            {
-                argArray = HandleSingleQuote(args).ToArray();
-            }
-            else
-            {
-                argArray = args.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            }
+
+            argArray = HandleQuotes(args).ToArray();
             RunExternalProgram(fullPath, command,
                                argArray);
 
