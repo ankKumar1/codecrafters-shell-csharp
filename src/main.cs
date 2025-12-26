@@ -54,7 +54,19 @@ class Program
         }
     }
 
-    static void EchoCommand(string input)
+    static void EchoCommand(string args)
+    {
+        if (args.Contains('\''))
+        {
+            var argList = HandleSingleQuote(args);
+            Console.WriteLine(string.Join(' ', argList));
+            return;
+        }
+
+        Console.WriteLine(args);
+    }
+
+    static List<string> HandleSingleQuote(string input)
     {
         var args = new List<string>();
         var current = new System.Text.StringBuilder();
@@ -87,8 +99,7 @@ class Program
         if (current.Length > 0)
             args.Add(current.ToString());
 
-        string result = string.Join(" ", args);
-        Console.WriteLine(result);
+        return args;
     }
 
     static void PwdCommand()
@@ -145,8 +156,18 @@ class Program
         string fullPath = GetFullPath(command);
         if (!string.IsNullOrEmpty(fullPath))
         {
+            string[] argArray;
+            if (args.Contains('\''))
+            {
+                argArray = HandleSingleQuote(args).ToArray();
+            }
+            else
+            {
+                argArray = args.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            }
             RunExternalProgram(fullPath, command,
-                               args.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+                               argArray);
+
             return;
         }
         Console.WriteLine($"{command}: command not found");
