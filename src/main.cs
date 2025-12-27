@@ -87,7 +87,7 @@ class Program
                 if (inDoubleQuote)
                 {
                     if (i + 1 < input.Length &&
-                        (input[i + 1] == '"' || input[i + 1] == '\\' || input[i + 1] == '\''))
+                        (input[i + 1] == '"' || input[i + 1] == '\\'))
                     {
                         current.Append(input[i + 1]);
                         i++;
