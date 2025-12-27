@@ -1,44 +1,42 @@
-﻿using System.Diagnostics;
-using System.Runtime.InteropServices;
-
-class Program
+﻿class Program
 {
     static readonly string[] Builtins = ["echo", "type", "exit", "pwd", "cd"];
-    const int X_OK = 1;
     static void Main()
     {
         while (true)
         {
             Console.Write("$ ");
-            string command = Console.ReadLine() ?? "";
+            string input = Console.ReadLine() ?? "";
 
-            if (command == "exit")
+            if (input == "exit")
             {
                 break;
             }
 
-            if (command != null)
-            {
-                ExecuteCommand(command);
-            }
+            var parts = HandleQuotes(input);
+
+            if (parts.Count == 0)
+                return;
+
+            var command = parts[0];
+            var args = parts.Skip(1)
+                           .ToArray();
+            ExecuteCommand(command, args);
         }
 
     }
 
-    public static void ExecuteCommand(string command)
+    public static void ExecuteCommand(string command, string[] args)
     {
-        int idx = command.IndexOf(' ');
-
-        string cmd = idx == -1 ? command : command.Substring(0, idx);
-        string args = idx == -1 ? string.Empty : command.Substring(idx + 1).Trim();
+        string agrument = string.Join(' ', args);
 
         if (command == "echo")
         {
-            EchoCommand(args);
+            EchoCommand(agrument);
         }
         else if (command == "type")
         {
-            TypeCommand(args);
+            TypeCommand(agrument);
         }
         else if (command == "pwd")
         {
@@ -46,18 +44,17 @@ class Program
         }
         else if (command == "cd")
         {
-            CdCommand(args);
+            CdCommand(agrument);
         }
         else
         {
-            ExecuteFiles(command);
+            ExecuteFiles(command, args);
         }
     }
 
     static void EchoCommand(string args)
     {
-        var argList = HandleQuotes(args);
-        Console.WriteLine(string.Join(' ', argList));
+        Console.WriteLine(args);
         return;
     }
 
@@ -85,12 +82,12 @@ class Program
                     continue;
                 }
 
-                if (inDoubleQuote && i + 1 < input.Length)
+                if (inDoubleQuote)
                 {
-                    char next = input[i + 1];
-                    if (next == '"' || next == '\\' || next == '\'')
+                    if (i + 1 < input.Length &&
+                        (input[i + 1] == '"' || input[i + 1] == '\\'))
                     {
-                        current.Append(next);
+                        current.Append(input[i + 1]);
                         i++;
                     }
                     else
@@ -174,7 +171,7 @@ class Program
             return;
         }
 
-        string fullPath = GetFullPath(args);
+        string? fullPath = ProcessRunner.FindInPath(args);
         if (!string.IsNullOrEmpty(fullPath))
         {
             Console.WriteLine($"{args} is {fullPath}");
@@ -184,85 +181,15 @@ class Program
         Console.WriteLine($"{args}: not found");
     }
 
-    static void ExecuteFiles(string input)
+    static void ExecuteFiles(string command, string[] args)
     {
-        var tokens = HandleQuotes(input);
-
-        if (tokens.Count == 0)
-            return;
-
-        string executable = tokens[0];
-        string[] arguments = tokens.Skip(1).ToArray();
-
-        string? fullPath = GetFullPath(executable);
+        string? fullPath = ProcessRunner.FindInPath(command);
         if (!string.IsNullOrEmpty(fullPath))
         {
-            RunExternalProgram(fullPath, executable,
-                               arguments);
+            ProcessRunner.RunExternalProgram(fullPath, command, args);
+
             return;
         }
-        Console.WriteLine($"{executable}: command not found");
+        Console.WriteLine($"{command}: command not found");
     }
-
-    static void RunExternalProgram(string path, string commandName,
-                                string[] args)
-    {
-        // To properly set argv[0] to just the command name (not full path),
-        // we need to use exec -a through a shell
-        ProcessStartInfo startInfo = new ProcessStartInfo();
-        startInfo.FileName = "/bin/sh";
-
-        // Build the command: exec -a <commandName> <fullPath> <args...>
-        // exec -a allows us to set argv[0] explicitly
-        var escapedArgs = args.Select(a => $"'{a.Replace("'", "'\\''")}'");
-        var commandLine =
-            $"exec -a '{commandName}' '{path}' {string.Join(" ", escapedArgs)}";
-
-        startInfo.ArgumentList.Add("-c");
-        startInfo.ArgumentList.Add(commandLine);
-        startInfo.UseShellExecute = false;
-
-        try
-        {
-            // Start the process and wait for it to complete
-            using (Process process = Process.Start(startInfo))
-            {
-                // Wait for the external program to finish execution
-                process?.WaitForExit();
-            }
-
-        }
-        catch (Exception ex)
-        {
-            // Display error message if program execution fails
-            Console.WriteLine($"Error running external program: {ex.Message}");
-        }
-    }
-
-    static string GetFullPath(string command)
-    {
-        string? pathEnv = Environment.GetEnvironmentVariable("PATH");
-        if (!string.IsNullOrEmpty(pathEnv))
-        {
-            foreach (string dir in pathEnv.Split(':'))
-            {
-                if (string.IsNullOrWhiteSpace(dir))
-                    continue;
-                string fullPath = Path.Combine(dir, command);
-                if (File.Exists(fullPath) && IsExecutable(fullPath))
-                {
-                    return fullPath;
-                }
-            }
-        }
-        return string.Empty;
-    }
-
-    static bool IsExecutable(string path)
-    {
-        return access(path, X_OK) == 0;
-    }
-
-    [DllImport("libc", SetLastError = true)]
-    static extern int access(string pathname, int mode);
 }
