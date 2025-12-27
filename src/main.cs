@@ -1,4 +1,6 @@
-﻿class Program
+﻿using System.Diagnostics;
+
+class Program
 {
     static readonly string[] Builtins = ["echo", "type", "exit", "pwd", "cd"];
     static void Main()
@@ -85,7 +87,7 @@
                 if (inDoubleQuote)
                 {
                     if (i + 1 < input.Length &&
-                        (input[i + 1] == '"' || input[i + 1] == '\\'))
+                        (input[i + 1] == '"' || input[i + 1] == '\\' || input[i + 1] == '\''))
                     {
                         current.Append(input[i + 1]);
                         i++;
@@ -171,7 +173,7 @@
             return;
         }
 
-        string? fullPath = ProcessRunner.FindInPath(args);
+        string? fullPath = FindInPath(args);
         if (!string.IsNullOrEmpty(fullPath))
         {
             Console.WriteLine($"{args} is {fullPath}");
@@ -183,13 +185,100 @@
 
     static void ExecuteFiles(string command, string[] args)
     {
-        string? fullPath = ProcessRunner.FindInPath(command);
+        string? fullPath = FindInPath(command);
         if (!string.IsNullOrEmpty(fullPath))
         {
-            ProcessRunner.RunExternalProgram(fullPath, command, args);
+            RunExternalProgram(fullPath, command, args);
 
             return;
         }
         Console.WriteLine($"{command}: command not found");
+    }
+
+
+    public static string? FindInPath(string command)
+    {
+        // Get the PATH environment variable
+        var pathEnv = Environment.GetEnvironmentVariable("PATH");
+
+        // Return null if PATH is not set
+        if (pathEnv == null)
+            return null;
+
+        // Split PATH into individual directories
+        var directories = pathEnv.Split(Path.PathSeparator);
+
+        // Search each directory for the command
+        foreach (var dir in directories)
+        {
+            // Construct the full path to the potential executable
+            var fullPath = Path.Combine(dir, command);
+
+            // Check if file exists and is executable
+            if (File.Exists(fullPath) && IsExecutable(fullPath))
+            {
+                return fullPath;
+            }
+        }
+
+        // Command not found in any PATH directory
+        return null;
+    }
+
+    // Check if a file has execute permissions (Unix-style)
+    private static bool IsExecutable(string path)
+    {
+        try
+        {
+            // Get Unix file permissions (only available on Unix-like systems)
+            var unixFileMode = File.GetUnixFileMode(path);
+            // Check if any execute permission is set (user, group, or other)
+            return (unixFileMode & UnixFileMode.UserExecute) != 0 ||
+                   (unixFileMode & UnixFileMode.GroupExecute) != 0 ||
+                   (unixFileMode & UnixFileMode.OtherExecute) != 0;
+        }
+        catch
+        {
+            // If unable to check permissions, assume not executable
+            return false;
+        }
+    }
+
+    // Run an external program with specified arguments
+    public static void RunExternalProgram(string path, string commandName,
+                                          string[] args)
+    {
+        // To properly set argv[0] to just the command name (not full path),
+        // we need to use exec -a through a shell
+        ProcessStartInfo startInfo = new ProcessStartInfo();
+        startInfo.FileName = "/bin/sh";
+
+        // Build the command: exec -a <commandName> <fullPath> <args...>
+        // exec -a allows us to set argv[0] explicitly
+        // Escape single quotes in commandName and path
+        var escapedCommandName = commandName.Replace("'", "'\\''");
+        var escapedPath = path.Replace("'", "'\\''");
+        var escapedArgs = args.Select(a => $"'{a.Replace("'", "'\\''")}'");
+        var commandLine =
+            $"exec -a '{escapedCommandName}' '{escapedPath}' {string.Join(" ", escapedArgs)}";
+
+        startInfo.ArgumentList.Add("-c");
+        startInfo.ArgumentList.Add(commandLine);
+        startInfo.UseShellExecute = false;
+
+        try
+        {
+            // Start the process and wait for it to complete
+            using (Process? process = Process.Start(startInfo))
+            {
+                // Wait for the external program to finish execution
+                process?.WaitForExit();
+            }
+        }
+        catch (Exception ex)
+        {
+            // Display error message if program execution fails
+            Console.WriteLine($"Error running external program: {ex.Message}");
+        }
     }
 }
