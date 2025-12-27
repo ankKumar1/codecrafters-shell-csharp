@@ -19,19 +19,19 @@ class Program
 
             if (command != null)
             {
-                int idx = command.IndexOf(' ');
-
-                string cmd = idx == -1 ? command : command.Substring(0, idx);
-                string args = idx == -1 ? string.Empty : command.Substring(idx + 1).Trim();
-
-                ExecuteCommand(cmd, args);
+                ExecuteCommand(command);
             }
         }
 
     }
 
-    public static void ExecuteCommand(string command, string args)
+    public static void ExecuteCommand(string command)
     {
+        int idx = command.IndexOf(' ');
+
+        string cmd = idx == -1 ? command : command.Substring(0, idx);
+        string args = idx == -1 ? string.Empty : command.Substring(idx + 1).Trim();
+
         if (command == "echo")
         {
             EchoCommand(args);
@@ -50,7 +50,7 @@ class Program
         }
         else
         {
-            ExecuteFiles(command, args);
+            ExecuteFiles(command);
         }
     }
 
@@ -184,21 +184,25 @@ class Program
         Console.WriteLine($"{args}: not found");
     }
 
-    static void ExecuteFiles(string command, string args)
+    static void ExecuteFiles(string input)
     {
-        string fileName = string.Join(' ', command);
-        string fullPath = GetFullPath(fileName);
+        var tokens = HandleQuotes(input);
+
+        if (tokens.Count == 0)
+            return;
+
+        string executable = tokens[0];
+        string[] arguments = tokens.ToArray();
+
+        string? fullPath = GetFullPath(executable);
         if (!string.IsNullOrEmpty(fullPath))
         {
-            string[] argArray;
-
-            argArray = HandleQuotes(args).ToArray();
-            RunExternalProgram(fullPath, command,
-                               argArray);
+            RunExternalProgram(fullPath, executable,
+                               arguments);
 
             return;
         }
-        Console.WriteLine($"{command}: command not found");
+        Console.WriteLine($"{executable}: command not found");
     }
 
     static void RunExternalProgram(string path, string commandName,
