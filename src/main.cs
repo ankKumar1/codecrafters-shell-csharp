@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 class Program
@@ -73,13 +73,33 @@ class Program
         {
             char c = input[i];
 
-            if (c == '\\' && !inSingleQuote && !inDoubleQuote)
+            if (c == '\\')
             {
-                if (i + 1 < input.Length)
+                if (!inSingleQuote && !inDoubleQuote)
                 {
-                    current.Append(input[i + 1]);
-                    i++;
+                    if (i + 1 < input.Length)
+                    {
+                        current.Append(input[i + 1]);
+                        i++;
+                    }
+                    continue;
                 }
+
+                if (inDoubleQuote)
+                {
+                    if (i + 1 < input.Length &&
+                        (input[i + 1] == '"' || input[i + 1] == '\\'))
+                    {
+                        current.Append(input[i + 1]);
+                        i++;
+                    }
+                    else
+                    {
+                        current.Append('\\');
+                    }
+                    continue;
+                }
+                current.Append('\\');
                 continue;
             }
 
