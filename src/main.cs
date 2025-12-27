@@ -10,7 +10,7 @@ class Program
         while (true)
         {
             Console.Write("$ ");
-            string command = Console.ReadLine();
+            string command = Console.ReadLine() ?? "";
 
             if (command == "exit")
             {
@@ -65,19 +65,27 @@ class Program
     {
         var args = new List<string>();
         var current = new System.Text.StringBuilder();
+
         bool inSingleQuote = false;
+        bool inDoubleQuote = false;
 
         for (int i = 0; i < input.Length; i++)
         {
             char c = input[i];
 
-            if (c == '\'')
+            if (c == '\'' && !inDoubleQuote)
             {
                 inSingleQuote = !inSingleQuote;
                 continue;
             }
 
-            if (char.IsWhiteSpace(c) && !inSingleQuote)
+            if (c == '"' && !inSingleQuote)
+            {
+                inDoubleQuote = !inDoubleQuote;
+                continue;
+            }
+
+            if (char.IsWhiteSpace(c) && !inSingleQuote && !inDoubleQuote)
             {
                 if (current.Length > 0)
                 {
@@ -186,7 +194,7 @@ class Program
             using (Process process = Process.Start(startInfo))
             {
                 // Wait for the external program to finish execution
-                process.WaitForExit();
+                process?.WaitForExit();
             }
 
         }
