@@ -85,12 +85,12 @@ class Program
                     continue;
                 }
 
-                if (inDoubleQuote)
+                if (inDoubleQuote && i + 1 < input.Length)
                 {
-                    if (i + 1 < input.Length &&
-                        (input[i + 1] == '"' || input[i + 1] == '\\' || input[i + 1] == '\''))
+                    char next = input[i + 1];
+                    if (next == '"' || next == '\\' || next == '\'')
                     {
-                        current.Append(input[i + 1]);
+                        current.Append(next);
                         i++;
                     }
                     else
