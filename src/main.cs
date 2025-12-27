@@ -186,7 +186,8 @@ class Program
 
     static void ExecuteFiles(string command, string args)
     {
-        string fullPath = GetFullPath(command);
+        string fileName = string.Join(' ', command);
+        string fullPath = GetFullPath(fileName);
         if (!string.IsNullOrEmpty(fullPath))
         {
             string[] argArray;
