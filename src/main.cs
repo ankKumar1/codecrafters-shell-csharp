@@ -192,14 +192,13 @@ class Program
             return;
 
         string executable = tokens[0];
-        string[] arguments = tokens.ToArray();
+        string[] arguments = tokens.Skip(1).ToArray();
 
         string? fullPath = GetFullPath(executable);
         if (!string.IsNullOrEmpty(fullPath))
         {
             RunExternalProgram(fullPath, executable,
                                arguments);
-
             return;
         }
         Console.WriteLine($"{executable}: command not found");
