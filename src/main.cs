@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Text;
 
 class Program
 {
@@ -8,7 +9,7 @@ class Program
         while (true)
         {
             Console.Write("$ ");
-            string input = Console.ReadLine() ?? "";
+            string input = ReadLineWithTabCompletion();
 
             if (input == "exit")
             {
@@ -18,7 +19,7 @@ class Program
             var parts = HandleQuotes(input);
 
             if (parts.Count == 0)
-                return;
+                continue;
 
             var command = parts[0];
             var args = parts.Skip(1)
@@ -27,6 +28,74 @@ class Program
         }
 
     }
+
+    static string ReadLineWithTabCompletion()
+    {
+        var buffer = new StringBuilder();
+
+        while (true)
+        {
+            var key = Console.ReadKey(intercept: true);
+
+            // ENTER
+            if (key.Key == ConsoleKey.Enter)
+            {
+                Console.WriteLine();
+                break;
+            }
+
+            // BACKSPACE
+            if (key.Key == ConsoleKey.Backspace)
+            {
+                if (buffer.Length > 0)
+                {
+                    buffer.Length--;
+                    Console.Write("\b \b");
+                }
+                continue;
+            }
+
+            // TAB → autocomplete
+            if (key.Key == ConsoleKey.Tab)
+            {
+                Autocomplete(buffer);
+                continue;
+            }
+
+            // Normal character
+            Console.Write(key.KeyChar);
+            buffer.Append(key.KeyChar);
+        }
+
+        return buffer.ToString();
+    }
+
+    static void Autocomplete(StringBuilder buffer)
+    {
+        string text = buffer.ToString();
+
+        // Only autocomplete the first word
+        if (text.Contains(' '))
+            return;
+
+        var match = Builtins
+            .FirstOrDefault(b => b.StartsWith(text, StringComparison.Ordinal));
+
+        if (match == null)
+            return;
+
+        // Remove current input from console
+        for (int i = 0; i < buffer.Length; i++)
+            Console.Write("\b \b");
+
+        buffer.Clear();
+
+        // Write completed command + space
+        buffer.Append(match);
+        buffer.Append(' ');
+        Console.Write(match + " ");
+    }
+
 
     public static void ExecuteCommand(string command, string[] args)
     {
