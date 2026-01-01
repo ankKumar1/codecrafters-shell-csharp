@@ -4,6 +4,8 @@ using System.Text;
 class Program
 {
     static readonly string[] Builtins = ["echo", "type", "exit", "pwd", "cd"];
+    static readonly string[] AutoCompleteBuiltins = ["echo", "exit"];
+
     static void Main()
     {
         while (true)
@@ -78,27 +80,40 @@ class Program
         if (text.Contains(' '))
             return;
 
-        var match = Builtins
+        var builtinMatch = AutoCompleteBuiltins
             .FirstOrDefault(b => b.StartsWith(text, StringComparison.Ordinal));
 
-        if (match == null)
+        if (builtinMatch != null)
         {
-            Console.Write("\x07");
+            ReplaceBuffer(buffer, builtinMatch);
             return;
         }
 
-        // Remove current input from console
+        // 2️⃣ Try executable completion from PATH
+        var executables = FindExecutablesStartingWith(text);
+
+        if (executables.Count == 1)
+        {
+            ReplaceBuffer(buffer, executables[0]);
+            return;
+        }
+
+        // 3️⃣ No match → bell
+        Console.Write("\x07");
+    }
+
+    static void ReplaceBuffer(StringBuilder buffer, string completion)
+    {
+        // Erase current text
         for (int i = 0; i < buffer.Length; i++)
             Console.Write("\b \b");
 
         buffer.Clear();
 
-        // Write completed command + space
-        buffer.Append(match);
+        buffer.Append(completion);
         buffer.Append(' ');
-        Console.Write(match + " ");
+        Console.Write(completion + " ");
     }
-
 
     public static void ExecuteCommand(string command, string[] args)
     {
@@ -265,6 +280,43 @@ class Program
             return;
         }
         Console.WriteLine($"{command}: command not found");
+    }
+
+    static List<string> FindExecutablesStartingWith(string prefix)
+    {
+        var results = new HashSet<string>();
+        var pathEnv = Environment.GetEnvironmentVariable("PATH");
+
+        if (pathEnv == null)
+            return results.ToList();
+
+        var directories = pathEnv.Split(Path.PathSeparator);
+
+        foreach (var dir in directories)
+        {
+            if (!Directory.Exists(dir))
+                continue;
+
+            try
+            {
+                foreach (var file in Directory.GetFiles(dir))
+                {
+                    var name = Path.GetFileName(file);
+
+                    if (!name.StartsWith(prefix, StringComparison.Ordinal))
+                        continue;
+
+                    if (IsExecutable(file))
+                        results.Add(name);
+                }
+            }
+            catch
+            {
+                // Ignore unreadable directories
+            }
+        }
+
+        return results.ToList();
     }
 
 
