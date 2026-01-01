@@ -5,6 +5,9 @@ class Program
 {
     static readonly string[] Builtins = ["echo", "type", "exit", "pwd", "cd"];
     static readonly string[] AutoCompleteBuiltins = ["echo", "exit"];
+    static string? lastTabPrefix = null;
+    static List<string>? lastTabMatches = null;
+    static bool waitingForSecondTab = false;
 
     static void Main()
     {
@@ -76,30 +79,78 @@ class Program
     {
         string text = buffer.ToString();
 
-        // Only autocomplete the first word
+        // Only autocomplete first word
         if (text.Contains(' '))
             return;
 
-        var builtinMatch = AutoCompleteBuiltins
-            .FirstOrDefault(b => b.StartsWith(text, StringComparison.Ordinal));
-
-        if (builtinMatch != null)
+        // Reset TAB state if prefix changed
+        if (lastTabPrefix != text)
         {
-            ReplaceBuffer(buffer, builtinMatch);
+            waitingForSecondTab = false;
+            lastTabMatches = null;
+            lastTabPrefix = text;
+        }
+
+        // 1️⃣ Builtins first
+        var builtinMatch = AutoCompleteBuiltins
+            .Where(b => b.StartsWith(text, StringComparison.Ordinal))
+            .ToList();
+
+        if (builtinMatch.Count == 1)
+        {
+            ReplaceBuffer(buffer, builtinMatch[0]);
+            ResetTabState();
             return;
         }
 
-        // 2️⃣ Try executable completion from PATH
+        if (builtinMatch.Count > 1)
+        {
+            HandleMultipleMatches(buffer, builtinMatch);
+            return;
+        }
+
+        // 2️⃣ Executables from PATH
         var executables = FindExecutablesStartingWith(text);
 
         if (executables.Count == 1)
         {
             ReplaceBuffer(buffer, executables[0]);
+            ResetTabState();
             return;
         }
 
-        // 3️⃣ No match → bell
+        if (executables.Count > 1)
+        {
+            HandleMultipleMatches(buffer, executables);
+            return;
+        }
+
+        // 3️⃣ No matches
         Console.Write("\x07");
+        ResetTabState();
+    }
+
+    static void HandleMultipleMatches(StringBuilder buffer, List<string> matches)
+    {
+        matches.Sort(StringComparer.Ordinal);
+
+        if (!waitingForSecondTab)
+        {
+            Console.Write("\x07"); // first TAB → bell
+            waitingForSecondTab = true;
+            lastTabMatches = matches;
+            return;
+        }
+
+        // Second TAB → show matches
+        Console.WriteLine();
+        Console.WriteLine(string.Join("  ", matches));
+
+        // Reprint prompt and original buffer
+        Console.Write("$ ");
+        Console.Write(buffer.ToString());
+
+        waitingForSecondTab = false;
     }
 
     static void ReplaceBuffer(StringBuilder buffer, string completion)
@@ -313,6 +364,7 @@ class Program
             catch
             {
                 // Ignore unreadable directories
+                throw;
             }
         }
 
@@ -404,5 +456,12 @@ class Program
             // Display error message if program execution fails
             Console.WriteLine($"Error running external program: {ex.Message}");
         }
+    }
+
+    static void ResetTabState()
+    {
+        waitingForSecondTab = false;
+        lastTabMatches = null;
+        lastTabPrefix = null;
     }
 }
