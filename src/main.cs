@@ -82,7 +82,10 @@ class Program
             .FirstOrDefault(b => b.StartsWith(text, StringComparison.Ordinal));
 
         if (match == null)
+        {
+            Console.Write("\x07");
             return;
+        }
 
         // Remove current input from console
         for (int i = 0; i < buffer.Length; i++)
