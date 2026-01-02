@@ -91,44 +91,49 @@ class Program
             lastTabPrefix = text;
         }
 
-        // 1️⃣ Builtins first
-        var builtinMatch = AutoCompleteBuiltins
-            .Where(b => b.StartsWith(text, StringComparison.Ordinal))
-            .ToList();
+        // 1️⃣ Collect matches (builtins + executables)
+        var matches = new List<string>();
 
-        if (builtinMatch.Count == 1)
+        matches.AddRange(
+            AutoCompleteBuiltins
+                .Where(b => b.StartsWith(text, StringComparison.Ordinal))
+        );
+
+        matches.AddRange(
+            FindExecutablesStartingWith(text)
+        );
+
+        matches = matches.Distinct().ToList();
+
+        if (matches.Count == 0)
         {
-            ReplaceBuffer(buffer, builtinMatch[0]);
+            Console.Write("\x07");
             ResetTabState();
             return;
         }
 
-        if (builtinMatch.Count > 1)
+        // 2️⃣ Single match → full completion + space
+        if (matches.Count == 1)
         {
-            HandleMultipleMatches(buffer, builtinMatch);
-            return;
-        }
-
-        // 2️⃣ Executables from PATH
-        var executables = FindExecutablesStartingWith(text);
-
-        if (executables.Count == 1)
-        {
-            ReplaceBuffer(buffer, executables[0]);
+            ReplaceBuffer(buffer, matches[0]);
             ResetTabState();
             return;
         }
 
-        if (executables.Count > 1)
+        // 3️⃣ Multiple matches → longest common prefix
+        string lcp = LongestCommonPrefix(matches);
+
+        if (lcp.Length > text.Length)
         {
-            HandleMultipleMatches(buffer, executables);
+            ReplaceBufferWithoutSpace(buffer, lcp);
+            ResetTabState();
             return;
         }
 
-        // 3️⃣ No matches
-        Console.Write("\x07");
-        ResetTabState();
+        // 4️⃣ LCP cannot extend → bell / list logic
+        HandleMultipleMatches(buffer, matches);
     }
+
 
     static void HandleMultipleMatches(StringBuilder buffer, List<string> matches)
     {
@@ -456,6 +461,43 @@ class Program
             // Display error message if program execution fails
             Console.WriteLine($"Error running external program: {ex.Message}");
         }
+    }
+
+    static void ReplaceBufferWithoutSpace(StringBuilder buffer, string completion)
+    {
+        for (int i = 0; i < buffer.Length; i++)
+            Console.Write("\b \b");
+
+        buffer.Clear();
+        buffer.Append(completion);
+        Console.Write(completion);
+    }
+
+
+    static string LongestCommonPrefix(List<string> items)
+    {
+        if (items.Count == 0)
+            return string.Empty;
+
+        string prefix = items[0];
+
+        foreach (var item in items)
+        {
+            int i = 0;
+            while (i < prefix.Length &&
+                   i < item.Length &&
+                   prefix[i] == item[i])
+            {
+                i++;
+            }
+
+            prefix = prefix.Substring(0, i);
+
+            if (prefix.Length == 0)
+                break;
+        }
+
+        return prefix;
     }
 
     static void ResetTabState()
