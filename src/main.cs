@@ -26,9 +26,20 @@ class Program
             if (parts.Count == 0)
                 continue;
 
+            // PIPE DETECTION
+            int pipeIndex = parts.IndexOf("|");
+
+            if (pipeIndex != -1)
+            {
+                var left = parts.Take(pipeIndex).ToList();
+                var right = parts.Skip(pipeIndex + 1).ToList();
+
+                ExecutePipeline(left, right);
+                continue;
+            }
+
             var command = parts[0];
-            var args = parts.Skip(1)
-                           .ToArray();
+            var args = parts.Skip(1).ToArray();
             ExecuteCommand(command, args);
         }
 
@@ -196,6 +207,83 @@ class Program
             ExecuteFiles(command, args);
         }
     }
+
+    static void ExecutePipeline(List<string> left, List<string> right)
+    {
+        if (left.Count == 0 || right.Count == 0)
+        {
+            Console.WriteLine("Invalid pipeline");
+            return;
+        }
+
+        string leftCmd = left[0];
+        string[] leftArgs = left.Skip(1).ToArray();
+
+        string rightCmd = right[0];
+        string[] rightArgs = right.Skip(1).ToArray();
+
+        string? leftPath = FindInPath(leftCmd);
+        string? rightPath = FindInPath(rightCmd);
+
+        if (leftPath == null)
+        {
+            Console.WriteLine($"{leftCmd}: command not found");
+            return;
+        }
+
+        if (rightPath == null)
+        {
+            Console.WriteLine($"{rightCmd}: command not found");
+            return;
+        }
+
+        var leftProcess = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = leftPath,
+                UseShellExecute = false,
+                RedirectStandardOutput = true
+            }
+        };
+
+        foreach (var arg in leftArgs)
+            leftProcess.StartInfo.ArgumentList.Add(arg);
+
+        var rightProcess = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = rightPath,
+                UseShellExecute = false,
+                RedirectStandardInput = true
+            }
+        };
+
+        foreach (var arg in rightArgs)
+            rightProcess.StartInfo.ArgumentList.Add(arg);
+
+        try
+        {
+            leftProcess.Start();
+            rightProcess.Start();
+
+            // 🔹 PIPE: stdout → stdin
+            leftProcess.StandardOutput.BaseStream.CopyTo(
+                rightProcess.StandardInput.BaseStream
+            );
+
+            rightProcess.StandardInput.Close();
+
+            leftProcess.WaitForExit();
+            rightProcess.WaitForExit();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Pipeline error: {ex.Message}");
+        }
+    }
+
 
     static void EchoCommand(string args)
     {
