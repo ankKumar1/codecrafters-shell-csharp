@@ -3,8 +3,6 @@ using System.Text;
 
 class Program
 {
-    static readonly string[] Builtins = ["echo", "type", "exit", "pwd", "cd"];
-    static readonly string[] AutoCompleteBuiltins = ["echo", "exit"];
     static string? lastTabPrefix = null;
     static List<string>? lastTabMatches = null;
     static bool waitingForSecondTab = false;
@@ -34,7 +32,7 @@ class Program
                 var left = parts.Take(pipeIndex).ToList();
                 var right = parts.Skip(pipeIndex + 1).ToList();
 
-                ExecutePipeline(left, right);
+                Pipeline.ExecutePipeline(left, right);
                 continue;
             }
 
@@ -106,7 +104,7 @@ class Program
         var matches = new List<string>();
 
         matches.AddRange(
-            AutoCompleteBuiltins
+            Utils.AutoCompleteBuiltins
                 .Where(b => b.StartsWith(text, StringComparison.Ordinal))
         );
 
@@ -208,81 +206,7 @@ class Program
         }
     }
 
-    static void ExecutePipeline(List<string> left, List<string> right)
-    {
-        if (left.Count == 0 || right.Count == 0)
-        {
-            Console.WriteLine("Invalid pipeline");
-            return;
-        }
-
-        string leftCmd = left[0];
-        string[] leftArgs = left.Skip(1).ToArray();
-
-        string rightCmd = right[0];
-        string[] rightArgs = right.Skip(1).ToArray();
-
-        string? leftPath = FindInPath(leftCmd);
-        string? rightPath = FindInPath(rightCmd);
-
-        if (leftPath == null)
-        {
-            Console.WriteLine($"{leftCmd}: command not found");
-            return;
-        }
-
-        if (rightPath == null)
-        {
-            Console.WriteLine($"{rightCmd}: command not found");
-            return;
-        }
-
-        var leftProcess = new Process
-        {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = leftPath,
-                UseShellExecute = false,
-                RedirectStandardOutput = true
-            }
-        };
-
-        foreach (var arg in leftArgs)
-            leftProcess.StartInfo.ArgumentList.Add(arg);
-
-        var rightProcess = new Process
-        {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = rightPath,
-                UseShellExecute = false,
-                RedirectStandardInput = true
-            }
-        };
-
-        foreach (var arg in rightArgs)
-            rightProcess.StartInfo.ArgumentList.Add(arg);
-
-        try
-        {
-            leftProcess.Start();
-            rightProcess.Start();
-
-            // 🔹 PIPE: stdout → stdin
-            leftProcess.StandardOutput.BaseStream.CopyTo(
-                rightProcess.StandardInput.BaseStream
-            );
-
-            rightProcess.StandardInput.Close();
-
-            leftProcess.WaitForExit();
-            rightProcess.WaitForExit();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Pipeline error: {ex.Message}");
-        }
-    }
+   
 
 
     static void EchoCommand(string args)
@@ -398,13 +322,13 @@ class Program
     static void TypeCommand(string args)
     {
 
-        if (Builtins.Contains(args))
+        if (Utils.Builtins.Contains(args))
         {
             Console.WriteLine($"{args} is a shell builtin");
             return;
         }
 
-        string? fullPath = FindInPath(args);
+        string? fullPath = FileExecution.FindInPath(args);
         if (!string.IsNullOrEmpty(fullPath))
         {
             Console.WriteLine($"{args} is {fullPath}");
@@ -416,7 +340,7 @@ class Program
 
     static void ExecuteFiles(string command, string[] args)
     {
-        string? fullPath = FindInPath(command);
+        string? fullPath = FileExecution.FindInPath(command);
         if (!string.IsNullOrEmpty(fullPath))
         {
             RunExternalProgram(fullPath, command, args);
@@ -450,7 +374,7 @@ class Program
                     if (!name.StartsWith(prefix, StringComparison.Ordinal))
                         continue;
 
-                    if (IsExecutable(file))
+                    if (FileExecution.IsExecutable(file))
                         results.Add(name);
                 }
             }
@@ -464,54 +388,8 @@ class Program
         return results.ToList();
     }
 
-
-    public static string? FindInPath(string command)
-    {
-        // Get the PATH environment variable
-        var pathEnv = Environment.GetEnvironmentVariable("PATH");
-
-        // Return null if PATH is not set
-        if (pathEnv == null)
-            return null;
-
-        // Split PATH into individual directories
-        var directories = pathEnv.Split(Path.PathSeparator);
-
-        // Search each directory for the command
-        foreach (var dir in directories)
-        {
-            // Construct the full path to the potential executable
-            var fullPath = Path.Combine(dir, command);
-
-            // Check if file exists and is executable
-            if (File.Exists(fullPath) && IsExecutable(fullPath))
-            {
-                return fullPath;
-            }
-        }
-
-        // Command not found in any PATH directory
-        return null;
-    }
-
     // Check if a file has execute permissions (Unix-style)
-    private static bool IsExecutable(string path)
-    {
-        try
-        {
-            // Get Unix file permissions (only available on Unix-like systems)
-            var unixFileMode = File.GetUnixFileMode(path);
-            // Check if any execute permission is set (user, group, or other)
-            return (unixFileMode & UnixFileMode.UserExecute) != 0 ||
-                   (unixFileMode & UnixFileMode.GroupExecute) != 0 ||
-                   (unixFileMode & UnixFileMode.OtherExecute) != 0;
-        }
-        catch
-        {
-            // If unable to check permissions, assume not executable
-            return false;
-        }
-    }
+   
 
     // Run an external program with specified arguments
     public static void RunExternalProgram(string path, string commandName,
