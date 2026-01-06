@@ -1,5 +1,9 @@
 ﻿using System.Diagnostics;
 using System.Text;
+using CodeCrafters.Shell.Utilities;
+using CodeCrafters.Shell.Commands;
+
+namespace codecrafters.shell;
 
 class Program
 {
