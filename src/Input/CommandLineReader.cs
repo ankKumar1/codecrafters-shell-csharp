@@ -8,6 +8,9 @@ public sealed class CommandLineReader
 
     public string ReadLine()
     {
+        if (Console.IsInputRedirected)
+            return Console.ReadLine() ?? string.Empty;
+
         var buffer = new StringBuilder();
 
         while (true)
