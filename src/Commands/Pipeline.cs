@@ -19,45 +19,270 @@ public class Pipeline
 
     public static void ExecutePipeline(List<List<string>> stages)
     {
-        Stream? currentInput = null;
+        var pipelineStages = CreatePipelineStages(stages);
 
-        for (int index = 0; index < stages.Count; index++)
+        if (pipelineStages == null)
+            return;
+
+        try
         {
-            bool isLastStage = index == stages.Count - 1;
-            Stream output = isLastStage
-                ? Console.OpenStandardOutput()
-                : new MemoryStream();
+            StartExternalStages(pipelineStages);
 
-            var stage = stages[index];
-            bool success = ExecuteStage(stage, currentInput ?? Stream.Null, output, isLastStage);
+            var copyTasks = StartStreamCopies(pipelineStages);
+            var builtinTasks = StartBuiltinStages(pipelineStages);
 
-            currentInput?.Dispose();
+            WaitForLastStage(pipelineStages, builtinTasks);
+            StopRunningProcesses(pipelineStages);
 
-            if (!success)
-            {
-                if (output is MemoryStream failedOutput)
-                    failedOutput.Dispose();
-
-                return;
-            }
-
-            if (output is MemoryStream nextInput)
-            {
-                nextInput.Position = 0;
-                currentInput = nextInput;
-            }
-            else
-            {
-                currentInput = null;
-            }
+            Task.WaitAll([.. copyTasks, .. builtinTasks]);
         }
-
-        currentInput?.Dispose();
+        finally
+        {
+            DisposeProcesses(pipelineStages);
+        }
     }
 
     public static bool IsBuiltin(string command)
     {
         return BuiltinCommands.IsBuiltin(command);
+    }
+
+    private static List<PipelineStage>? CreatePipelineStages(List<List<string>> stages)
+    {
+        var pipelineStages = new List<PipelineStage>();
+
+        foreach (var stage in stages)
+        {
+            string command = stage[0];
+            string[] args = stage.Skip(1).ToArray();
+
+            if (IsBuiltin(command))
+            {
+                pipelineStages.Add(PipelineStage.ForBuiltin(command, args));
+                continue;
+            }
+
+            string? path = FileExecution.FindInPath(command);
+
+            if (path == null)
+            {
+                Console.WriteLine($"{command}: command not found");
+                return null;
+            }
+
+            pipelineStages.Add(PipelineStage.ForExternal(command, args, path));
+        }
+
+        return pipelineStages;
+    }
+
+    private static void StartExternalStages(List<PipelineStage> stages)
+    {
+        for (int index = 0; index < stages.Count; index++)
+        {
+            var stage = stages[index];
+
+            if (stage.IsBuiltin)
+                continue;
+
+            bool hasPrevious = index > 0;
+            bool hasNext = index < stages.Count - 1;
+
+            stage.Process = CreateProcess(stage, hasPrevious, hasNext);
+            stage.Process.Start();
+        }
+    }
+
+    private static Process CreateProcess(PipelineStage stage, bool hasPrevious, bool hasNext)
+    {
+        var process = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = stage.Path,
+                UseShellExecute = false,
+                RedirectStandardInput = hasPrevious,
+                RedirectStandardOutput = hasNext
+            }
+        };
+
+        foreach (var arg in stage.Args)
+            process.StartInfo.ArgumentList.Add(arg);
+
+        return process;
+    }
+
+    private static List<Task> StartStreamCopies(List<PipelineStage> stages)
+    {
+        var copyTasks = new List<Task>();
+
+        for (int index = 0; index < stages.Count - 1; index++)
+        {
+            var current = stages[index];
+            var next = stages[index + 1];
+
+            if (current.IsBuiltin)
+                continue;
+
+            if (next.IsBuiltin)
+            {
+                CloseUnusedOutput(current);
+                continue;
+            }
+
+            copyTasks.Add(CopyToNextStage(current, next));
+        }
+
+        return copyTasks;
+    }
+
+    private static List<Task> StartBuiltinStages(List<PipelineStage> stages)
+    {
+        var builtinTasks = new List<Task>();
+
+        for (int index = 0; index < stages.Count; index++)
+        {
+            var stage = stages[index];
+
+            if (!stage.IsBuiltin)
+                continue;
+
+            Stream output = GetBuiltinOutputStream(stages, index);
+            bool closeOutput = index < stages.Count - 1;
+            builtinTasks.Add(Task.Run(() => ExecuteBuiltin(stage.Command, stage.Args, output, closeOutput)));
+        }
+
+        return builtinTasks;
+    }
+
+    private static Task CopyToNextStage(PipelineStage current, PipelineStage next)
+    {
+        return Task.Run(() =>
+        {
+            try
+            {
+                current.Process!.StandardOutput.BaseStream.CopyTo(next.Process!.StandardInput.BaseStream);
+            }
+            catch (IOException)
+            {
+            }
+            catch (InvalidOperationException)
+            {
+            }
+            finally
+            {
+                CloseStandardInput(next);
+            }
+        });
+    }
+
+    private static Stream GetBuiltinOutputStream(List<PipelineStage> stages, int index)
+    {
+        if (index == stages.Count - 1)
+            return Console.OpenStandardOutput();
+
+        var next = stages[index + 1];
+
+        if (next.IsBuiltin)
+            return Stream.Null;
+
+        return next.Process!.StandardInput.BaseStream;
+    }
+
+    private static void ExecuteBuiltin(string command, string[] args, Stream output, bool closeOutput)
+    {
+        try
+        {
+            using var writer = new StreamWriter(output, leaveOpen: true);
+            string argument = string.Join(' ', args);
+
+            switch (command)
+            {
+                case "echo":
+                    BuiltinCommands.Echo(argument, writer);
+                    break;
+                case "type":
+                    BuiltinCommands.Type(argument, writer);
+                    break;
+                case "pwd":
+                    BuiltinCommands.Pwd(writer);
+                    break;
+                default:
+                    writer.WriteLine($"{command}: builtin not supported in pipeline");
+                    break;
+            }
+
+            writer.Flush();
+        }
+        catch (IOException)
+        {
+        }
+        catch (InvalidOperationException)
+        {
+        }
+        finally
+        {
+            if (closeOutput)
+                output.Close();
+        }
+    }
+
+    private static void WaitForLastStage(List<PipelineStage> stages, List<Task> builtinTasks)
+    {
+        var lastStage = stages[^1];
+
+        if (lastStage.IsBuiltin)
+        {
+            Task.WaitAll([.. builtinTasks]);
+            return;
+        }
+
+        lastStage.Process!.WaitForExit();
+    }
+
+    private static void StopRunningProcesses(List<PipelineStage> stages)
+    {
+        foreach (var stage in stages)
+        {
+            if (stage.Process == null || stage.Process.HasExited)
+                continue;
+
+            try
+            {
+                stage.Process.Kill();
+            }
+            catch
+            {
+            }
+        }
+    }
+
+    private static void DisposeProcesses(List<PipelineStage> stages)
+    {
+        foreach (var stage in stages)
+            stage.Process?.Dispose();
+    }
+
+    private static void CloseUnusedOutput(PipelineStage stage)
+    {
+        try
+        {
+            stage.Process!.StandardOutput.Close();
+        }
+        catch
+        {
+        }
+    }
+
+    private static void CloseStandardInput(PipelineStage stage)
+    {
+        try
+        {
+            stage.Process!.StandardInput.Close();
+        }
+        catch
+        {
+        }
     }
 
     private static List<List<string>> SplitIntoStages(List<string> parts)
@@ -81,105 +306,29 @@ public class Pipeline
         return stages;
     }
 
-    private static bool ExecuteStage(
-        List<string> stage,
-        Stream input,
-        Stream output,
-        bool isLastStage)
+    private sealed class PipelineStage
     {
-        string command = stage[0];
-        string[] args = stage.Skip(1).ToArray();
-
-        if (IsBuiltin(command))
+        private PipelineStage(string command, string[] args, string? path)
         {
-            ExecuteBuiltinWithStreams(command, args, input, output);
-            return true;
+            Command = command;
+            Args = args;
+            Path = path;
         }
 
-        return ExecuteExternalWithStreams(command, args, input, output, isLastStage);
-    }
+        public string Command { get; }
+        public string[] Args { get; }
+        public string? Path { get; }
+        public Process? Process { get; set; }
+        public bool IsBuiltin => Path == null;
 
-    private static bool ExecuteExternalWithStreams(
-        string command,
-        string[] args,
-        Stream input,
-        Stream output,
-        bool isLastStage)
-    {
-        string? path = FileExecution.FindInPath(command);
-
-        if (path == null)
+        public static PipelineStage ForBuiltin(string command, string[] args)
         {
-            Console.WriteLine($"{command}: command not found");
-            return false;
+            return new PipelineStage(command, args, null);
         }
 
-        bool hasInput = input != Stream.Null;
-
-        var process = new Process
+        public static PipelineStage ForExternal(string command, string[] args, string path)
         {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = path,
-                UseShellExecute = false,
-                RedirectStandardInput = hasInput,
-                RedirectStandardOutput = !isLastStage
-            }
-        };
-
-        foreach (var arg in args)
-            process.StartInfo.ArgumentList.Add(arg);
-
-        process.Start();
-
-        if (hasInput)
-        {
-            input.CopyTo(process.StandardInput.BaseStream);
-            process.StandardInput.Close();
+            return new PipelineStage(command, args, path);
         }
-
-        if (!isLastStage)
-            process.StandardOutput.BaseStream.CopyTo(output);
-
-        process.WaitForExit();
-        return true;
-    }
-
-    private static void ExecuteBuiltinWithStreams(
-        string command,
-        string[] args,
-        Stream input,
-        Stream output)
-    {
-        DiscardInput(input);
-
-        using var writer = new StreamWriter(output, leaveOpen: true);
-        string argument = string.Join(' ', args);
-
-        switch (command)
-        {
-            case "echo":
-                BuiltinCommands.Echo(argument, writer);
-                break;
-            case "type":
-                BuiltinCommands.Type(argument, writer);
-                break;
-            case "pwd":
-                BuiltinCommands.Pwd(writer);
-                break;
-            default:
-                writer.WriteLine($"{command}: builtin not supported in pipeline");
-                break;
-        }
-
-        writer.Flush();
-    }
-
-    private static void DiscardInput(Stream input)
-    {
-        if (input == Stream.Null)
-            return;
-
-        input.CopyTo(Stream.Null);
     }
 }
