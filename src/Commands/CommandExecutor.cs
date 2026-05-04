@@ -20,6 +20,9 @@ public sealed class CommandExecutor
             case "cd":
                 BuiltinCommands.Cd(argument, Console.Out);
                 break;
+            case "history":
+                BuiltinCommands.History(Console.Out);
+                break;
             default:
                 ExecuteFile(command, args);
                 break;

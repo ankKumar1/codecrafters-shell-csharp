@@ -61,4 +61,13 @@ public static class BuiltinCommands
             output.WriteLine($"cd: {ex.Message}");
         }
     }
+
+    public static void History(TextWriter output)
+    {
+        for (int i = 0; i < Utils.history.Count; i++)
+        {
+            output.WriteLine($"{i + 1} {Utils.history[i]}");
+        }
+
+    }
 }
