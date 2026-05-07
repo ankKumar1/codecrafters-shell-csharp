@@ -62,11 +62,18 @@ public static class BuiltinCommands
         }
     }
 
-    public static void History(TextWriter output)
+    public static void History(string args,TextWriter output)
     {
-        for (int i = 0; i < Utils.history.Count; i++)
+        int  i = 0;
+        if(!string.IsNullOrEmpty(args))
+        {
+            i = Utils.history.Count - int.Parse(args);
+        }
+
+        while (i < Utils.history.Count)
         {
             output.WriteLine($"{i + 1} {Utils.history[i]}");
+            i++;
         }
 
     }
