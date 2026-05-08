@@ -194,23 +194,9 @@ public class Pipeline
         try
         {
             using var writer = new StreamWriter(output, leaveOpen: true);
-            string argument = string.Join(' ', args);
 
-            switch (command)
-            {
-                case "echo":
-                    BuiltinCommands.Echo(argument, writer);
-                    break;
-                case "type":
-                    BuiltinCommands.Type(argument, writer);
-                    break;
-                case "pwd":
-                    BuiltinCommands.Pwd(writer);
-                    break;
-                default:
-                    writer.WriteLine($"{command}: builtin not supported in pipeline");
-                    break;
-            }
+            if (!BuiltinCommands.Execute(command, args, writer))
+                writer.WriteLine($"{command}: builtin not supported in pipeline");
 
             writer.Flush();
         }

@@ -1,7 +1,6 @@
 using CodeCrafters.Shell.Commands;
 using CodeCrafters.Shell.Input;
 using CodeCrafters.Shell.Parsing;
-using CodeCrafters.Shell.Utilities;
 
 namespace CodeCrafters.Shell;
 
@@ -16,7 +15,6 @@ public sealed class ShellApp
         {
             Console.Write("$ ");
             string input = _reader.ReadLine();
-            Utils.history.Add(input);
 
             if (input == "exit")
                 break;

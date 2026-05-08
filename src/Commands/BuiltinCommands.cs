@@ -9,6 +9,32 @@ public static class BuiltinCommands
         return Utils.Builtins.Contains(command);
     }
 
+    public static bool Execute(string command, string[] args, TextWriter output)
+    {
+        string argument = string.Join(' ', args);
+
+        switch (command)
+        {
+            case "echo":
+                Echo(argument, output);
+                return true;
+            case "type":
+                Type(argument, output);
+                return true;
+            case "pwd":
+                Pwd(output);
+                return true;
+            case "cd":
+                Cd(argument, output);
+                return true;
+            case "history":
+                History(argument, output);
+                return true;
+            default:
+                return false;
+        }
+    }
+
     public static void Echo(string args, TextWriter output)
     {
         output.WriteLine(args);

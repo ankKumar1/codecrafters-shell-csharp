@@ -4,29 +4,12 @@ public sealed class CommandExecutor
 {
     public void Execute(string command, string[] args)
     {
-        string argument = string.Join(' ', args);
-
-        switch (command)
+        if (BuiltinCommands.Execute(command, args, Console.Out))
         {
-            case "echo":
-                BuiltinCommands.Echo(argument, Console.Out);
-                break;
-            case "type":
-                BuiltinCommands.Type(argument, Console.Out);
-                break;
-            case "pwd":
-                BuiltinCommands.Pwd(Console.Out);
-                break;
-            case "cd":
-                BuiltinCommands.Cd(argument, Console.Out);
-                break;
-            case "history":
-                BuiltinCommands.History(argument, Console.Out);
-                break;
-            default:
-                ExecuteFile(command, args);
-                break;
+            return;
         }
+
+        ExecuteFile(command, args);
     }
 
     private static void ExecuteFile(string command, string[] args)
