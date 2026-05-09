@@ -96,6 +96,12 @@ public static class BuiltinCommands
             return;
         }
 
+        if (args.Length == 3 && args[1] == "-w")
+        {
+            WriteToFile(args[2], output);
+            return;
+        }
+
         int i = 0;
 
         if (args.Length > 0 && int.TryParse(args[0], out int count))
@@ -131,5 +137,18 @@ public static class BuiltinCommands
         {
             output.WriteLine($"history: {ex.Message}");
         }
+    }
+
+    public static void WriteToFile(string path, TextWriter output)
+    {
+        try
+        {
+            File.WriteAllLines(path, Utils.history);
+        }
+        catch (Exception ex)
+        {
+            output.WriteLine($"history: {ex.Message}");
+        }
+
     }
 }
