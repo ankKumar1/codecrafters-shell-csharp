@@ -96,9 +96,9 @@ public static class BuiltinCommands
             return;
         }
 
-        if (args.Length == 3 && args[1] == "-w")
+        if (args.Length == 2 && args[0] == "-w")
         {
-            WriteToFile(args[2], output);
+            WriteToFile(args[1], output);
             return;
         }
 
