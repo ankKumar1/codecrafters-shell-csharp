@@ -28,7 +28,7 @@ public static class BuiltinCommands
                 Cd(argument, output);
                 return true;
             case "history":
-                History(argument, output);
+                History(args, output);
                 return true;
             default:
                 return false;
@@ -88,12 +88,19 @@ public static class BuiltinCommands
         }
     }
 
-    public static void History(string args,TextWriter output)
+    public static void History(string[] args, TextWriter output)
     {
-        int  i = 0;
-        if(!string.IsNullOrEmpty(args))
+        if (args.Length >= 2 && args[0] == "-r")
         {
-            i = Utils.history.Count - int.Parse(args);
+            ReadHistoryFile(args[1], output);
+            return;
+        }
+
+        int i = 0;
+
+        if (args.Length > 0 && int.TryParse(args[0], out int count))
+        {
+            i = Math.Max(0, Utils.history.Count - count);
         }
 
         while (i < Utils.history.Count)
@@ -102,5 +109,27 @@ public static class BuiltinCommands
             i++;
         }
 
+    }
+
+    private static void ReadHistoryFile(string path, TextWriter output)
+    {
+        try
+        {
+            string[] lines = File.ReadAllLines(path);
+            foreach (var line in lines)
+                Utils.history.Add(line);
+        }
+        catch (FileNotFoundException)
+        {
+            output.WriteLine($"history: {path}: No such file or directory");
+        }
+        catch (DirectoryNotFoundException)
+        {
+            output.WriteLine($"history: {path}: No such file or directory");
+        }
+        catch (Exception ex)
+        {
+            output.WriteLine($"history: {ex.Message}");
+        }
     }
 }
