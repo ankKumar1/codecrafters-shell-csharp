@@ -130,6 +130,8 @@ public static class BuiltinCommands
             string[] lines = File.ReadAllLines(path);
             foreach (var line in lines)
                 Utils.history.Add(line);
+
+            Utils.LastPersistedHistoryIndex = Utils.history.Count;
         }
         catch (FileNotFoundException)
         {
@@ -150,6 +152,7 @@ public static class BuiltinCommands
         try
         {
             File.WriteAllLines(path, Utils.history);
+            Utils.LastPersistedHistoryIndex = Utils.history.Count;
         }
         catch (Exception ex)
         {
@@ -161,7 +164,9 @@ public static class BuiltinCommands
     {
         try
         {
-            File.AppendAllLines(path, Utils.history);
+            var newEntries = Utils.history.Skip(Utils.LastPersistedHistoryIndex);
+            File.AppendAllLines(path, newEntries);
+            Utils.LastPersistedHistoryIndex = Utils.history.Count;
         }
         catch (Exception ex)
         {
