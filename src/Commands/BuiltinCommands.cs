@@ -102,6 +102,12 @@ public static class BuiltinCommands
             return;
         }
 
+        if (args.Length == 2 && args[0] == "-a")
+        {
+            AppendToFile(args[1], output);
+            return;
+        }
+
         int i = 0;
 
         if (args.Length > 0 && int.TryParse(args[0], out int count))
@@ -149,6 +155,17 @@ public static class BuiltinCommands
         {
             output.WriteLine($"history: {ex.Message}");
         }
+    }
 
+    public static void AppendToFile(string path, TextWriter output)
+    {
+        try
+        {
+            File.AppendAllLines(path, Utils.history);
+        }
+        catch (Exception ex)
+        {
+            output.WriteLine($"history: {ex.Message}");
+        }
     }
 }
