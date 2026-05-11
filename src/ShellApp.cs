@@ -11,29 +11,38 @@ public sealed class ShellApp
 
     public void Run()
     {
-        while (true)
+        CommandHistory.LoadFromEnvironment();
+
+        try
         {
-            Console.Write("$ ");
-            string input = _reader.ReadLine();
-
-            if (input == "exit")
-                break;
-
-            var parts = CommandParser.Parse(input);
-
-            if (parts.Count == 0)
-                continue;
-
-            if (parts.Contains("|"))
+            while (true)
             {
-                Pipeline.ExecutePipeline(parts);
-                continue;
+                Console.Write("$ ");
+                string input = _reader.ReadLine();
+
+                if (input == "exit")
+                    break;
+
+                var parts = CommandParser.Parse(input);
+
+                if (parts.Count == 0)
+                    continue;
+
+                if (parts.Contains("|"))
+                {
+                    Pipeline.ExecutePipeline(parts);
+                    continue;
+                }
+
+                var command = parts[0];
+                var args = parts.Skip(1).ToArray();
+
+                _executor.Execute(command, args);
             }
-
-            var command = parts[0];
-            var args = parts.Skip(1).ToArray();
-
-            _executor.Execute(command, args);
+        }
+        finally
+        {
+            CommandHistory.SaveToEnvironmentFile(Console.Out);
         }
     }
 }

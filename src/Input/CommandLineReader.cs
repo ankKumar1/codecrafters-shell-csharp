@@ -1,5 +1,4 @@
 using System.Text;
-using CodeCrafters.Shell.Utilities;
 
 namespace CodeCrafters.Shell.Input;
 
@@ -19,7 +18,7 @@ public sealed class CommandLineReader
         }
 
         var buffer = new StringBuilder();
-        _historyIndex = Utils.history.Count;
+        _historyIndex = CommandHistory.Count;
         _currentDraft = string.Empty;
 
         while (true)
@@ -75,43 +74,43 @@ public sealed class CommandLineReader
 
     private void ShowPreviousHistoryEntry(StringBuilder buffer)
     {
-        if (Utils.history.Count == 0)
+        if (CommandHistory.Count == 0)
             return;
 
-        if (_historyIndex == Utils.history.Count)
+        if (_historyIndex == CommandHistory.Count)
             _currentDraft = buffer.ToString();
 
         if (_historyIndex > 0)
             _historyIndex--;
 
-        ReplaceBuffer(buffer, Utils.history[_historyIndex]);
+        ReplaceBuffer(buffer, CommandHistory.Get(_historyIndex));
     }
 
     private void ShowNextHistoryEntry(StringBuilder buffer)
     {
-        if (Utils.history.Count == 0 || _historyIndex == Utils.history.Count)
+        if (CommandHistory.Count == 0 || _historyIndex == CommandHistory.Count)
             return;
 
-        if (_historyIndex < Utils.history.Count - 1)
+        if (_historyIndex < CommandHistory.Count - 1)
         {
             _historyIndex++;
-            ReplaceBuffer(buffer, Utils.history[_historyIndex]);
+            ReplaceBuffer(buffer, CommandHistory.Get(_historyIndex));
             return;
         }
 
-        _historyIndex = Utils.history.Count;
+        _historyIndex = CommandHistory.Count;
         ReplaceBuffer(buffer, _currentDraft);
     }
 
     private void ResetHistoryNavigation(StringBuilder buffer)
     {
-        _historyIndex = Utils.history.Count;
+        _historyIndex = CommandHistory.Count;
         _currentDraft = buffer.ToString();
     }
 
     private static void AddToHistory(string input)
     {
-        Utils.history.Add(input);
+        CommandHistory.Add(input);
     }
 
     private static void ReplaceBuffer(StringBuilder buffer, string value)

@@ -1,3 +1,4 @@
+using CodeCrafters.Shell.Input;
 using CodeCrafters.Shell.Utilities;
 
 namespace CodeCrafters.Shell.Commands;
@@ -92,85 +93,29 @@ public static class BuiltinCommands
     {
         if (args.Length >= 2 && args[0] == "-r")
         {
-            ReadHistoryFile(args[1], output);
+            CommandHistory.ReadFromFile(args[1], output);
             return;
         }
 
         if (args.Length == 2 && args[0] == "-w")
         {
-            WriteToFile(args[1], output);
+            CommandHistory.WriteToFile(args[1], output);
             return;
         }
 
         if (args.Length == 2 && args[0] == "-a")
         {
-            AppendToFile(args[1], output);
+            CommandHistory.AppendToFile(args[1], output);
             return;
         }
 
-        int i = 0;
+        int? count = null;
 
-        if (args.Length > 0 && int.TryParse(args[0], out int count))
-        {
-            i = Math.Max(0, Utils.history.Count - count);
-        }
+        if (args.Length > 0 && int.TryParse(args[0], out int parsedCount))
+            count = parsedCount;
 
-        while (i < Utils.history.Count)
-        {
-            output.WriteLine($"{i + 1} {Utils.history[i]}");
-            i++;
-        }
+        foreach (var entry in CommandHistory.GetEntries(count))
+            output.WriteLine($"{entry.Number} {entry.Command}");
 
-    }
-
-    private static void ReadHistoryFile(string path, TextWriter output)
-    {
-        try
-        {
-            string[] lines = File.ReadAllLines(path);
-            foreach (var line in lines)
-                Utils.history.Add(line);
-
-            Utils.LastPersistedHistoryIndex = Utils.history.Count;
-        }
-        catch (FileNotFoundException)
-        {
-            output.WriteLine($"history: {path}: No such file or directory");
-        }
-        catch (DirectoryNotFoundException)
-        {
-            output.WriteLine($"history: {path}: No such file or directory");
-        }
-        catch (Exception ex)
-        {
-            output.WriteLine($"history: {ex.Message}");
-        }
-    }
-
-    public static void WriteToFile(string path, TextWriter output)
-    {
-        try
-        {
-            File.WriteAllLines(path, Utils.history);
-            Utils.LastPersistedHistoryIndex = Utils.history.Count;
-        }
-        catch (Exception ex)
-        {
-            output.WriteLine($"history: {ex.Message}");
-        }
-    }
-
-    public static void AppendToFile(string path, TextWriter output)
-    {
-        try
-        {
-            var newEntries = Utils.history.Skip(Utils.LastPersistedHistoryIndex);
-            File.AppendAllLines(path, newEntries);
-            Utils.LastPersistedHistoryIndex = Utils.history.Count;
-        }
-        catch (Exception ex)
-        {
-            output.WriteLine($"history: {ex.Message}");
-        }
     }
 }
