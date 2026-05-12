@@ -65,7 +65,9 @@ public static class CommandParser
             {
                 if (current.Length > 0)
                 {
-                    args.Add(current.ToString());
+                    if (c != '>' || current.ToString() != "1")
+                        args.Add(current.ToString());
+
                     current.Clear();
                 }
 
