@@ -4,12 +4,13 @@ namespace CodeCrafters.Shell.Commands;
 
 public static class ExternalProgramRunner
 {
-    public static void Run(string path, string commandName, string[] args)
+    public static void Run(string path, string commandName, string[] args, Stream? output = null)
     {
         ProcessStartInfo startInfo = new()
         {
             FileName = "/bin/sh",
-            UseShellExecute = false
+            UseShellExecute = false,
+            RedirectStandardOutput = output != null
         };
 
         var escapedCommandName = EscapeSingleQuotes(commandName);
@@ -24,6 +25,9 @@ public static class ExternalProgramRunner
         try
         {
             using Process? process = Process.Start(startInfo);
+            if (process != null && output != null)
+                process.StandardOutput.BaseStream.CopyTo(output);
+
             process?.WaitForExit();
         }
         catch (Exception ex)

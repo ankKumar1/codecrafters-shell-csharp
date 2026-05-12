@@ -61,7 +61,7 @@ public static class CommandParser
                 continue;
             }
 
-            if (c == '|' && !inSingleQuote && !inDoubleQuote)
+            if ((c == '|' || c == '>') && !inSingleQuote && !inDoubleQuote)
             {
                 if (current.Length > 0)
                 {
@@ -69,7 +69,7 @@ public static class CommandParser
                     current.Clear();
                 }
 
-                args.Add("|");
+                args.Add(c.ToString());
                 continue;
             }
 
