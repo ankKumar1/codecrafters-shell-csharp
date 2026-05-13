@@ -63,15 +63,28 @@ public static class CommandParser
 
             if ((c == '|' || c == '>') && !inSingleQuote && !inDoubleQuote)
             {
+                string token = c.ToString();
+
                 if (current.Length > 0)
                 {
-                    if (c != '>' || current.ToString() != "1")
+                    string currentToken = current.ToString();
+
+                    if (c == '>' && (currentToken == "1" || currentToken == "2"))
+                    {
+                        token = currentToken + token;
+                    }
+                    else
+                    {
                         args.Add(current.ToString());
+                    }
 
                     current.Clear();
                 }
 
-                args.Add(c.ToString());
+                if (token == "1>")
+                    token = ">";
+
+                args.Add(token);
                 continue;
             }
 

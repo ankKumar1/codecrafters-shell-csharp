@@ -2,9 +2,12 @@ namespace CodeCrafters.Shell.Commands;
 
 public static class Redirection
 {
+    private const string StdoutOperator = ">";
+    private const string StderrOperator = "2>";
+
     public static bool TryExecute(List<string> parts)
     {
-        int redirectIndex = parts.IndexOf(">");
+        int redirectIndex = FindRedirectIndex(parts);
 
         if (redirectIndex == -1)
             return false;
@@ -15,7 +18,7 @@ public static class Redirection
             return true;
         }
 
-        if (parts.LastIndexOf(">") != redirectIndex)
+        if (HasMultipleRedirects(parts))
         {
             Console.WriteLine("Invalid redirection");
             return true;
@@ -23,29 +26,47 @@ public static class Redirection
 
         var commandParts = parts.Take(redirectIndex).ToList();
         string outputPath = parts[redirectIndex + 1];
+        bool redirectError = parts[redirectIndex] == StderrOperator;
 
-        Execute(commandParts, outputPath);
+        Execute(commandParts, outputPath, redirectError);
         return true;
     }
 
-    private static void Execute(List<string> commandParts, string outputPath)
+    private static int FindRedirectIndex(List<string> parts)
+    {
+        int stdoutIndex = parts.IndexOf(StdoutOperator);
+        int stderrIndex = parts.IndexOf(StderrOperator);
+
+        if (stdoutIndex == -1)
+            return stderrIndex;
+
+        if (stderrIndex == -1)
+            return stdoutIndex;
+
+        return Math.Min(stdoutIndex, stderrIndex);
+    }
+
+    private static bool HasMultipleRedirects(List<string> parts)
+    {
+        return parts.Count(part => part == StdoutOperator || part == StderrOperator) > 1;
+    }
+
+    private static void Execute(List<string> commandParts, string outputPath, bool redirectError)
     {
         string command = commandParts[0];
         string[] args = commandParts.Skip(1).ToArray();
 
         try
         {
-            using var outputStream = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
-            using var writer = new StreamWriter(outputStream, leaveOpen: true);
+            using var fileStream = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
 
-            if (BuiltinCommands.Execute(command, args, writer))
+            if (redirectError)
             {
-                writer.Flush();
+                ExecuteWithStderrRedirect(command, args, fileStream);
                 return;
             }
 
-            writer.Flush();
-            RunExternalCommand(command, args, outputStream);
+            ExecuteWithStdoutRedirect(command, args, fileStream);
         }
         catch (Exception ex)
         {
@@ -53,16 +74,51 @@ public static class Redirection
         }
     }
 
-    private static void RunExternalCommand(string command, string[] args, Stream output)
+    private static void ExecuteWithStdoutRedirect(string command, string[] args, Stream output)
+    {
+        using var writer = new StreamWriter(output, leaveOpen: true);
+
+        if (BuiltinCommands.Execute(command, args, writer))
+        {
+            writer.Flush();
+            return;
+        }
+
+        writer.Flush();
+        RunExternalCommand(command, args, output, null, Console.Error);
+    }
+
+    private static void ExecuteWithStderrRedirect(string command, string[] args, Stream error)
+    {
+        using var errorWriter = new StreamWriter(error, leaveOpen: true);
+
+        if (BuiltinCommands.Execute(command, args, Console.Out))
+        {
+            errorWriter.Flush();
+            return;
+        }
+
+        errorWriter.Flush();
+        RunExternalCommand(command, args, null, error, errorWriter);
+        errorWriter.Flush();
+    }
+
+    private static void RunExternalCommand(
+        string command,
+        string[] args,
+        Stream? output,
+        Stream? error,
+        TextWriter errorWriter)
     {
         string? fullPath = FileExecution.FindInPath(command);
 
         if (string.IsNullOrEmpty(fullPath))
         {
-            Console.WriteLine($"{command}: command not found");
+            errorWriter.WriteLine($"{command}: command not found");
+            errorWriter.Flush();
             return;
         }
 
-        ExternalProgramRunner.Run(fullPath, command, args, output);
+        ExternalProgramRunner.Run(fullPath, command, args, output, error);
     }
 }

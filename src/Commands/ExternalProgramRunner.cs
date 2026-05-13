@@ -4,13 +4,19 @@ namespace CodeCrafters.Shell.Commands;
 
 public static class ExternalProgramRunner
 {
-    public static void Run(string path, string commandName, string[] args, Stream? output = null)
+    public static void Run(
+        string path,
+        string commandName,
+        string[] args,
+        Stream? output = null,
+        Stream? error = null)
     {
         ProcessStartInfo startInfo = new()
         {
             FileName = "/bin/sh",
             UseShellExecute = false,
-            RedirectStandardOutput = output != null
+            RedirectStandardOutput = output != null,
+            RedirectStandardError = error != null
         };
 
         var escapedCommandName = EscapeSingleQuotes(commandName);
@@ -25,8 +31,11 @@ public static class ExternalProgramRunner
         try
         {
             using Process? process = Process.Start(startInfo);
-            if (process != null && output != null)
-                process.StandardOutput.BaseStream.CopyTo(output);
+
+            if (process != null)
+            {
+                CopyRedirectedStreams(process, output, error);
+            }
 
             process?.WaitForExit();
         }
@@ -39,5 +48,23 @@ public static class ExternalProgramRunner
     private static string EscapeSingleQuotes(string value)
     {
         return value.Replace("'", "'\\''");
+    }
+
+    private static void CopyRedirectedStreams(Process process, Stream? output, Stream? error)
+    {
+        if (output != null && error != null)
+        {
+            Task.WaitAll(
+                Task.Run(() => process.StandardOutput.BaseStream.CopyTo(output)),
+                Task.Run(() => process.StandardError.BaseStream.CopyTo(error))
+            );
+            return;
+        }
+
+        if (output != null)
+            process.StandardOutput.BaseStream.CopyTo(output);
+
+        if (error != null)
+            process.StandardError.BaseStream.CopyTo(error);
     }
 }
