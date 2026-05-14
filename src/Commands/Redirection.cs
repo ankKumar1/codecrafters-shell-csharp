@@ -3,6 +3,7 @@ namespace CodeCrafters.Shell.Commands;
 public static class Redirection
 {
     private const string StdoutOperator = ">";
+    private const string AppendStdoutOperator = ">>";
     private const string StderrOperator = "2>";
 
     public static bool TryExecute(List<string> parts)
@@ -27,38 +28,47 @@ public static class Redirection
         var commandParts = parts.Take(redirectIndex).ToList();
         string outputPath = parts[redirectIndex + 1];
         bool redirectError = parts[redirectIndex] == StderrOperator;
+        bool appendOutput = parts[redirectIndex] == AppendStdoutOperator;
 
-        Execute(commandParts, outputPath, redirectError);
+        Execute(commandParts, outputPath, redirectError, appendOutput);
         return true;
     }
 
     private static int FindRedirectIndex(List<string> parts)
     {
-        int stdoutIndex = parts.IndexOf(StdoutOperator);
-        int stderrIndex = parts.IndexOf(StderrOperator);
+        var redirectIndexes = parts
+            .Select((part, index) => IsRedirectOperator(part) ? index : -1)
+            .Where(index => index != -1)
+            .ToList();
 
-        if (stdoutIndex == -1)
-            return stderrIndex;
-
-        if (stderrIndex == -1)
-            return stdoutIndex;
-
-        return Math.Min(stdoutIndex, stderrIndex);
+        return redirectIndexes.Count == 0 ? -1 : redirectIndexes.Min();
     }
 
     private static bool HasMultipleRedirects(List<string> parts)
     {
-        return parts.Count(part => part == StdoutOperator || part == StderrOperator) > 1;
+        return parts.Count(IsRedirectOperator) > 1;
     }
 
-    private static void Execute(List<string> commandParts, string outputPath, bool redirectError)
+    private static bool IsRedirectOperator(string part)
+    {
+        return part == StdoutOperator ||
+               part == AppendStdoutOperator ||
+               part == StderrOperator;
+    }
+
+    private static void Execute(
+        List<string> commandParts,
+        string outputPath,
+        bool redirectError,
+        bool appendOutput)
     {
         string command = commandParts[0];
         string[] args = commandParts.Skip(1).ToArray();
 
         try
         {
-            using var fileStream = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
+            FileMode fileMode = appendOutput ? FileMode.Append : FileMode.Create;
+            using var fileStream = new FileStream(outputPath, fileMode, FileAccess.Write);
 
             if (redirectError)
             {

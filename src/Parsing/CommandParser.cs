@@ -65,6 +65,12 @@ public static class CommandParser
             {
                 string token = c.ToString();
 
+                if (c == '>' && i + 1 < input.Length && input[i + 1] == '>')
+                {
+                    token = ">>";
+                    i++;
+                }
+
                 if (current.Length > 0)
                 {
                     string currentToken = current.ToString();
@@ -83,6 +89,8 @@ public static class CommandParser
 
                 if (token == "1>")
                     token = ">";
+                else if (token == "1>>")
+                    token = ">>";
 
                 args.Add(token);
                 continue;
