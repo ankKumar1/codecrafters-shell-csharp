@@ -5,6 +5,7 @@ public static class Redirection
     private const string StdoutOperator = ">";
     private const string AppendStdoutOperator = ">>";
     private const string StderrOperator = "2>";
+    private const string AppendStderrOperator = "2>>";
 
     public static bool TryExecute(List<string> parts)
     {
@@ -27,8 +28,8 @@ public static class Redirection
 
         var commandParts = parts.Take(redirectIndex).ToList();
         string outputPath = parts[redirectIndex + 1];
-        bool redirectError = parts[redirectIndex] == StderrOperator;
-        bool appendOutput = parts[redirectIndex] == AppendStdoutOperator;
+        bool redirectError = parts[redirectIndex] is StderrOperator or AppendStderrOperator;
+        bool appendOutput = parts[redirectIndex] is AppendStdoutOperator or AppendStderrOperator;
 
         Execute(commandParts, outputPath, redirectError, appendOutput);
         return true;
@@ -53,7 +54,8 @@ public static class Redirection
     {
         return part == StdoutOperator ||
                part == AppendStdoutOperator ||
-               part == StderrOperator;
+               part == StderrOperator ||
+               part == AppendStderrOperator;
     }
 
     private static void Execute(
@@ -70,13 +72,7 @@ public static class Redirection
             FileMode fileMode = appendOutput ? FileMode.Append : FileMode.Create;
             using var fileStream = new FileStream(outputPath, fileMode, FileAccess.Write);
 
-            if (redirectError)
-            {
-                ExecuteWithStderrRedirect(command, args, fileStream);
-                return;
-            }
-
-            ExecuteWithStdoutRedirect(command, args, fileStream);
+            ExecuteWithRedirect(command, args, fileStream, redirectError);
         }
         catch (Exception ex)
         {
@@ -84,33 +80,30 @@ public static class Redirection
         }
     }
 
-    private static void ExecuteWithStdoutRedirect(string command, string[] args, Stream output)
+    private static void ExecuteWithRedirect(
+        string command,
+        string[] args,
+        Stream redirectStream,
+        bool redirectError)
     {
-        using var writer = new StreamWriter(output, leaveOpen: true);
+        using var writer = new StreamWriter(redirectStream, leaveOpen: true);
+        TextWriter builtinOutput = redirectError ? Console.Out : writer;
 
-        if (BuiltinCommands.Execute(command, args, writer))
+        if (BuiltinCommands.Execute(command, args, builtinOutput))
         {
             writer.Flush();
             return;
         }
 
         writer.Flush();
-        RunExternalCommand(command, args, output, null, Console.Error);
-    }
-
-    private static void ExecuteWithStderrRedirect(string command, string[] args, Stream error)
-    {
-        using var errorWriter = new StreamWriter(error, leaveOpen: true);
-
-        if (BuiltinCommands.Execute(command, args, Console.Out))
-        {
-            errorWriter.Flush();
-            return;
-        }
-
-        errorWriter.Flush();
-        RunExternalCommand(command, args, null, error, errorWriter);
-        errorWriter.Flush();
+        RunExternalCommand(
+            command,
+            args,
+            redirectError ? null : redirectStream,
+            redirectError ? redirectStream : null,
+            redirectError ? writer : Console.Error
+        );
+        writer.Flush();
     }
 
     private static void RunExternalCommand(
