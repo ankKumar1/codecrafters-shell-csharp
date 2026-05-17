@@ -13,8 +13,13 @@ public sealed class TabCompleter
     {
         string text = buffer.ToString();
 
-        if (text.Contains(' '))
+        int lastSpaceIndex = text.LastIndexOf(' ');
+
+        if (lastSpaceIndex != -1)
+        {
+            CompleteFilename(buffer, text, lastSpaceIndex + 1);
             return;
+        }
 
         if (_lastTabPrefix != text)
         {
@@ -47,6 +52,49 @@ public sealed class TabCompleter
         if (longestPrefix.Length > text.Length)
         {
             ReplaceBufferWithoutSpace(buffer, longestPrefix);
+            ResetTabState();
+            return;
+        }
+
+        HandleMultipleMatches(buffer, matches);
+    }
+
+    private void CompleteFilename(StringBuilder buffer, string text, int prefixStartIndex)
+    {
+        string prefix = text[prefixStartIndex..];
+        string stateKey = $"file:{text}";
+
+        if (_lastTabPrefix != stateKey)
+        {
+            _waitingForSecondTab = false;
+            _lastTabPrefix = stateKey;
+        }
+
+        var matches = Directory.GetFiles(Directory.GetCurrentDirectory())
+            .Select(file => Path.GetFileName(file) ?? string.Empty)
+            .Where(name => name.StartsWith(prefix, StringComparison.Ordinal))
+            .Distinct()
+            .ToList();
+
+        if (matches.Count == 0)
+        {
+            Console.Write("\x07");
+            ResetTabState();
+            return;
+        }
+
+        if (matches.Count == 1)
+        {
+            ReplaceBufferWithText(buffer, text[..prefixStartIndex] + matches[0] + " ");
+            ResetTabState();
+            return;
+        }
+
+        string longestPrefix = LongestCommonPrefix(matches);
+
+        if (longestPrefix.Length > prefix.Length)
+        {
+            ReplaceBufferWithText(buffer, text[..prefixStartIndex] + longestPrefix);
             ResetTabState();
             return;
         }
@@ -89,6 +137,14 @@ public sealed class TabCompleter
 
         buffer.Append(completion);
         Console.Write(completion);
+    }
+
+    private static void ReplaceBufferWithText(StringBuilder buffer, string text)
+    {
+        ClearBuffer(buffer);
+
+        buffer.Append(text);
+        Console.Write(text);
     }
 
     private static void ClearBuffer(StringBuilder buffer)
