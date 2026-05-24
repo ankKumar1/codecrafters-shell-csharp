@@ -70,9 +70,18 @@ public sealed class TabCompleter
             _lastTabPrefix = stateKey;
         }
 
-        var matches = Directory.GetFiles(Directory.GetCurrentDirectory())
+        var (directoryText, searchDirectory, filePrefix) = SplitFilePrefix(prefix);
+
+        if (!Directory.Exists(searchDirectory))
+        {
+            Console.Write("\x07");
+            ResetTabState();
+            return;
+        }
+
+        var matches = Directory.GetFiles(searchDirectory)
             .Select(file => Path.GetFileName(file) ?? string.Empty)
-            .Where(name => name.StartsWith(prefix, StringComparison.Ordinal))
+            .Where(name => name.StartsWith(filePrefix, StringComparison.Ordinal))
             .Distinct()
             .ToList();
 
@@ -85,21 +94,35 @@ public sealed class TabCompleter
 
         if (matches.Count == 1)
         {
-            ReplaceBufferWithText(buffer, text[..prefixStartIndex] + matches[0] + " ");
+            ReplaceBufferWithText(buffer, text[..prefixStartIndex] + directoryText + matches[0] + " ");
             ResetTabState();
             return;
         }
 
         string longestPrefix = LongestCommonPrefix(matches);
 
-        if (longestPrefix.Length > prefix.Length)
+        if (longestPrefix.Length > filePrefix.Length)
         {
-            ReplaceBufferWithText(buffer, text[..prefixStartIndex] + longestPrefix);
+            ReplaceBufferWithText(buffer, text[..prefixStartIndex] + directoryText + longestPrefix);
             ResetTabState();
             return;
         }
 
         HandleMultipleMatches(buffer, matches);
+    }
+
+    private static (string DirectoryText, string SearchDirectory, string FilePrefix) SplitFilePrefix(string prefix)
+    {
+        int separatorIndex = prefix.LastIndexOfAny(['/', '\\']);
+
+        if (separatorIndex == -1)
+            return (string.Empty, Directory.GetCurrentDirectory(), prefix);
+
+        string directoryText = prefix[..(separatorIndex + 1)];
+        string filePrefix = prefix[(separatorIndex + 1)..];
+        string searchDirectory = Path.GetFullPath(directoryText);
+
+        return (directoryText, searchDirectory, filePrefix);
     }
 
     private void HandleMultipleMatches(StringBuilder buffer, List<string> matches)
