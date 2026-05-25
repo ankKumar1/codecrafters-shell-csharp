@@ -79,9 +79,7 @@ public sealed class TabCompleter
             return;
         }
 
-        var matches = Directory.GetFiles(searchDirectory)
-            .Select(file => Path.GetFileName(file) ?? string.Empty)
-            .Where(name => name.StartsWith(filePrefix, StringComparison.Ordinal))
+        var matches = FindFileSystemMatches(searchDirectory, filePrefix)
             .Distinct()
             .ToList();
 
@@ -94,12 +92,13 @@ public sealed class TabCompleter
 
         if (matches.Count == 1)
         {
-            ReplaceBufferWithText(buffer, text[..prefixStartIndex] + directoryText + matches[0] + " ");
+            string suffix = matches[0].IsDirectory ? "/" : " ";
+            ReplaceBufferWithText(buffer, text[..prefixStartIndex] + directoryText + matches[0].Name + suffix);
             ResetTabState();
             return;
         }
 
-        string longestPrefix = LongestCommonPrefix(matches);
+        string longestPrefix = LongestCommonPrefix(matches.Select(match => match.Name).ToList());
 
         if (longestPrefix.Length > filePrefix.Length)
         {
@@ -109,6 +108,19 @@ public sealed class TabCompleter
         }
 
         HandleMultipleMatches(buffer, matches);
+    }
+
+    private static IEnumerable<FileSystemMatch> FindFileSystemMatches(string searchDirectory, string filePrefix)
+    {
+        var files = Directory.GetFiles(searchDirectory)
+            .Select(file => new FileSystemMatch(Path.GetFileName(file) ?? string.Empty, false));
+
+        var directories = Directory.GetDirectories(searchDirectory)
+            .Select(directory => new FileSystemMatch(Path.GetFileName(directory) ?? string.Empty, true));
+
+        return files
+            .Concat(directories)
+            .Where(match => match.Name.StartsWith(filePrefix, StringComparison.Ordinal));
     }
 
     private static (string DirectoryText, string SearchDirectory, string FilePrefix) SplitFilePrefix(string prefix)
@@ -143,6 +155,11 @@ public sealed class TabCompleter
         Console.Write(buffer.ToString());
 
         _waitingForSecondTab = false;
+    }
+
+    private void HandleMultipleMatches(StringBuilder buffer, List<FileSystemMatch> matches)
+    {
+        HandleMultipleMatches(buffer, matches.Select(match => match.Name).ToList());
     }
 
     private static void ReplaceBuffer(StringBuilder buffer, string completion)
@@ -245,4 +262,6 @@ public sealed class TabCompleter
         _waitingForSecondTab = false;
         _lastTabPrefix = null;
     }
+
+    private sealed record FileSystemMatch(string Name, bool IsDirectory);
 }
