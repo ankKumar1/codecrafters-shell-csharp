@@ -35,8 +35,7 @@ public sealed class TabCompleter
 
         if (matches.Count == 0)
         {
-            Console.Write("\x07");
-            ResetTabState();
+            BellNoMatch();
             return;
         }
 
@@ -74,8 +73,7 @@ public sealed class TabCompleter
 
         if (!Directory.Exists(searchDirectory))
         {
-            Console.Write("\x07");
-            ResetTabState();
+            BellNoMatch();
             return;
         }
 
@@ -85,8 +83,7 @@ public sealed class TabCompleter
 
         if (matches.Count == 0)
         {
-            Console.Write("\x07");
-            ResetTabState();
+            BellNoMatch();
             return;
         }
 
@@ -261,6 +258,12 @@ public sealed class TabCompleter
     {
         _waitingForSecondTab = false;
         _lastTabPrefix = null;
+    }
+
+    private void BellNoMatch()
+    {
+        Console.Write("\x07");
+        ResetTabState();
     }
 
     private sealed record FileSystemMatch(string Name, bool IsDirectory);
