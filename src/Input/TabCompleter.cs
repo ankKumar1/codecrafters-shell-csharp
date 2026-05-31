@@ -95,6 +95,15 @@ public sealed class TabCompleter
             return;
         }
 
+        string longestPrefix = LongestCommonPrefix(matches.Select(match => match.Name).ToList());
+
+        if (longestPrefix.Length > filePrefix.Length)
+        {
+            ReplaceBufferWithText(buffer, text[..prefixStartIndex] + directoryText + longestPrefix);
+            ResetTabState();
+            return;
+        }
+
         HandleMultipleMatches(buffer, matches);
     }
 
