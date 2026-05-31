@@ -95,15 +95,6 @@ public sealed class TabCompleter
             return;
         }
 
-        string longestPrefix = LongestCommonPrefix(matches.Select(match => match.Name).ToList());
-
-        if (longestPrefix.Length > filePrefix.Length)
-        {
-            ReplaceBufferWithText(buffer, text[..prefixStartIndex] + directoryText + longestPrefix);
-            ResetTabState();
-            return;
-        }
-
         HandleMultipleMatches(buffer, matches);
     }
 
@@ -156,7 +147,12 @@ public sealed class TabCompleter
 
     private void HandleMultipleMatches(StringBuilder buffer, List<FileSystemMatch> matches)
     {
-        HandleMultipleMatches(buffer, matches.Select(match => match.Name).ToList());
+        var formattedMatches = matches
+            .OrderBy(match => match.Name, StringComparer.Ordinal)
+            .Select(match => match.IsDirectory ? match.Name + "/" : match.Name)
+            .ToList();
+
+        HandleMultipleMatches(buffer, formattedMatches);
     }
 
     private static void ReplaceBuffer(StringBuilder buffer, string completion)
