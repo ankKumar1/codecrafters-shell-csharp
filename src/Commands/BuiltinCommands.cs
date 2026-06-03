@@ -124,6 +124,5 @@ public static class BuiltinCommands
 
     public static void Jobs(string[] args, TextWriter output)
     {
-        output.WriteLine($"$ ");
     }
 }
