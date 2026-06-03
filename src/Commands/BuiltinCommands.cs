@@ -31,6 +31,9 @@ public static class BuiltinCommands
             case "history":
                 History(args, output);
                 return true;
+            case "jobs":
+                Jobs(args, output);
+                return true;
             default:
                 return false;
         }
@@ -117,5 +120,10 @@ public static class BuiltinCommands
         foreach (var entry in CommandHistory.GetEntries(count))
             output.WriteLine($"{entry.Number} {entry.Command}");
 
+    }
+
+    public static void Jobs(string[] args, TextWriter output)
+    {
+        output.WriteLine($"$");
     }
 }
