@@ -28,6 +28,9 @@ public sealed class ShellApp
                 if (parts.Count == 0)
                     continue;
 
+                if (BackgroundJobs.TryStart(parts))
+                    continue;
+
                 if (Redirection.TryExecute(parts))
                     continue;
 

@@ -11,22 +11,9 @@ public static class ExternalProgramRunner
         Stream? output = null,
         Stream? error = null)
     {
-        ProcessStartInfo startInfo = new()
-        {
-            FileName = "/bin/sh",
-            UseShellExecute = false,
-            RedirectStandardOutput = output != null,
-            RedirectStandardError = error != null
-        };
-
-        var escapedCommandName = EscapeSingleQuotes(commandName);
-        var escapedPath = EscapeSingleQuotes(path);
-        var escapedArgs = args.Select(arg => $"'{EscapeSingleQuotes(arg)}'");
-        var commandLine =
-            $"exec -a '{escapedCommandName}' '{escapedPath}' {string.Join(" ", escapedArgs)}";
-
-        startInfo.ArgumentList.Add("-c");
-        startInfo.ArgumentList.Add(commandLine);
+        ProcessStartInfo startInfo = CreateStartInfo(path, commandName, args);
+        startInfo.RedirectStandardOutput = output != null;
+        startInfo.RedirectStandardError = error != null;
 
         try
         {
@@ -43,6 +30,39 @@ public static class ExternalProgramRunner
         {
             Console.WriteLine($"Error running external program: {ex.Message}");
         }
+    }
+
+    public static Process? StartBackground(string path, string commandName, string[] args)
+    {
+        try
+        {
+            return Process.Start(CreateStartInfo(path, commandName, args));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error running external program: {ex.Message}");
+            return null;
+        }
+    }
+
+    private static ProcessStartInfo CreateStartInfo(string path, string commandName, string[] args)
+    {
+        ProcessStartInfo startInfo = new()
+        {
+            FileName = "/bin/sh",
+            UseShellExecute = false
+        };
+
+        var escapedCommandName = EscapeSingleQuotes(commandName);
+        var escapedPath = EscapeSingleQuotes(path);
+        var escapedArgs = args.Select(arg => $"'{EscapeSingleQuotes(arg)}'");
+        var commandLine =
+            $"exec -a '{escapedCommandName}' '{escapedPath}' {string.Join(" ", escapedArgs)}";
+
+        startInfo.ArgumentList.Add("-c");
+        startInfo.ArgumentList.Add(commandLine);
+
+        return startInfo;
     }
 
     private static string EscapeSingleQuotes(string value)
