@@ -4,7 +4,7 @@ namespace CodeCrafters.Shell.Commands;
 
 public static class BackgroundJobs
 {
-    private static readonly List<Job> Jobs = [];
+    private static readonly List<BackgroundJob> Jobs = [];
     private static int _nextJobNumber = 1;
 
     public static bool TryStart(List<string> parts)
@@ -12,6 +12,7 @@ public static class BackgroundJobs
         if (parts.Count == 0 || parts[^1] != "&")
             return false;
 
+        string commandText = string.Join(' ', parts);
         parts.RemoveAt(parts.Count - 1);
 
         if (parts.Count == 0)
@@ -33,11 +34,35 @@ public static class BackgroundJobs
             return true;
 
         int jobNumber = _nextJobNumber++;
-        Jobs.Add(new Job(jobNumber, process));
+        Jobs.Add(new BackgroundJob(jobNumber, process, commandText));
 
         Console.WriteLine($"[{jobNumber}] {process.Id}");
         return true;
     }
 
-    private sealed record Job(int Number, Process Process);
+    public static void ListRunning(TextWriter output)
+    {
+        RemoveCompletedJobs();
+
+        var runningJobs = Jobs
+            .Where(job => job.IsRunning)
+            .OrderBy(job => job.Number)
+            .ToList();
+
+        if (runningJobs.Count == 0)
+            return;
+
+        int currentJobNumber = runningJobs[^1].Number;
+
+        foreach (var job in runningJobs)
+        {
+            char marker = job.Number == currentJobNumber ? '+' : ' ';
+            output.WriteLine($"[{job.Number}]{marker}  {job.Status,-24}{job.Command}");
+        }
+    }
+
+    private static void RemoveCompletedJobs()
+    {
+        Jobs.RemoveAll(job => !job.IsRunning);
+    }
 }
