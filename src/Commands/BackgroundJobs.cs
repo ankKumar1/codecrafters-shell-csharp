@@ -53,12 +53,26 @@ public static class BackgroundJobs
             return;
 
         int currentJobNumber = runningJobs[^1].Number;
+        int? previousJobNumber = runningJobs.Count >= 2
+            ? runningJobs[^2].Number
+            : null;
 
         foreach (var job in runningJobs)
         {
-            char marker = job.Number == currentJobNumber ? '+' : ' ';
+            char marker = GetJobMarker(job.Number, currentJobNumber, previousJobNumber);
             output.WriteLine($"[{job.Number}]{marker}  {job.Status,-24}{job.Command}");
         }
+    }
+
+    private static char GetJobMarker(int jobNumber, int currentJobNumber, int? previousJobNumber)
+    {
+        if (jobNumber == currentJobNumber)
+            return '+';
+
+        if (jobNumber == previousJobNumber)
+            return '-';
+
+        return ' ';
     }
 
     private static void RemoveCompletedJobs()
