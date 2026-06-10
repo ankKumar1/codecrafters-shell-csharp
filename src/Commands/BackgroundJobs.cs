@@ -42,29 +42,34 @@ public static class BackgroundJobs
 
     public static void ListRunning(TextWriter output)
     {
-        RemoveCompletedJobs();
-
-        var runningJobs = Jobs
-            .Where(job => job.IsRunning)
+        var jobsToDisplay = Jobs
             .OrderBy(job => job.Number)
             .ToList();
 
-        if (runningJobs.Count == 0)
+        if (jobsToDisplay.Count == 0)
             return;
 
-        int currentJobNumber = runningJobs[^1].Number;
+        var runningJobs = jobsToDisplay
+            .Where(job => job.IsRunning)
+            .ToList();
+
+        int? currentJobNumber = runningJobs.Count > 0
+            ? runningJobs[^1].Number
+            : null;
         int? previousJobNumber = runningJobs.Count >= 2
             ? runningJobs[^2].Number
             : null;
 
-        foreach (var job in runningJobs)
+        foreach (var job in jobsToDisplay)
         {
             char marker = GetJobMarker(job.Number, currentJobNumber, previousJobNumber);
             output.WriteLine($"[{job.Number}]{marker}  {job.Status,-24}{job.Command}");
         }
+
+        RemoveCompletedJobs();
     }
 
-    private static char GetJobMarker(int jobNumber, int currentJobNumber, int? previousJobNumber)
+    private static char GetJobMarker(int jobNumber, int? currentJobNumber, int? previousJobNumber)
     {
         if (jobNumber == currentJobNumber)
             return '+';
