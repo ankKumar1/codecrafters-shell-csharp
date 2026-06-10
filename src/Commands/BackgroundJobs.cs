@@ -12,12 +12,12 @@ public static class BackgroundJobs
         if (parts.Count == 0 || parts[^1] != "&")
             return false;
 
-        string commandText = string.Join(' ', parts);
         parts.RemoveAt(parts.Count - 1);
 
         if (parts.Count == 0)
             return true;
 
+        string commandText = string.Join(' ', parts);
         string command = parts[0];
         string[] args = parts.Skip(1).ToArray();
         string? fullPath = FileExecution.FindInPath(command);
@@ -49,21 +49,17 @@ public static class BackgroundJobs
         if (jobsToDisplay.Count == 0)
             return;
 
-        var runningJobs = jobsToDisplay
-            .Where(job => job.IsRunning)
-            .ToList();
-
-        int? currentJobNumber = runningJobs.Count > 0
-            ? runningJobs[^1].Number
+        int? currentJobNumber = jobsToDisplay.Count > 0
+            ? jobsToDisplay[^1].Number
             : null;
-        int? previousJobNumber = runningJobs.Count >= 2
-            ? runningJobs[^2].Number
+        int? previousJobNumber = jobsToDisplay.Count >= 2
+            ? jobsToDisplay[^2].Number
             : null;
 
         foreach (var job in jobsToDisplay)
         {
             char marker = GetJobMarker(job.Number, currentJobNumber, previousJobNumber);
-            output.WriteLine($"[{job.Number}]{marker}  {job.Status,-24}{job.Command}");
+            output.WriteLine($"[{job.Number}]{marker}  {FormatStatus(job.Status)}{job.Command}");
         }
 
         RemoveCompletedJobs();
@@ -78,6 +74,12 @@ public static class BackgroundJobs
             return '-';
 
         return ' ';
+    }
+
+    private static string FormatStatus(string status)
+    {
+        int width = status == "Done" ? 21 : 24;
+        return status.PadRight(width);
     }
 
     private static void RemoveCompletedJobs()
