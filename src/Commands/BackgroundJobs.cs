@@ -42,28 +42,25 @@ public static class BackgroundJobs
 
     public static void ListRunning(TextWriter output)
     {
-        ReapCompleted(output);
-
-        var runningJobs = Jobs
-            .Where(job => job.IsRunning)
+        var jobsToDisplay = Jobs
             .OrderBy(job => job.Number)
             .ToList();
 
-        if (runningJobs.Count == 0)
+        if (jobsToDisplay.Count == 0)
             return;
 
-        int? currentJobNumber = runningJobs.Count > 0
-            ? runningJobs[^1].Number
-            : null;
-        int? previousJobNumber = runningJobs.Count >= 2
-            ? runningJobs[^2].Number
+        int? currentJobNumber = jobsToDisplay[^1].Number;
+        int? previousJobNumber = jobsToDisplay.Count >= 2
+            ? jobsToDisplay[^2].Number
             : null;
 
-        foreach (var job in runningJobs)
+        foreach (var job in jobsToDisplay)
         {
             char marker = GetJobMarker(job.Number, currentJobNumber, previousJobNumber);
-            output.WriteLine($"[{job.Number}]{marker}  {FormatStatus(job.Status)}{job.Command}");
+            WriteJob(output, job, marker);
         }
+
+        RemoveCompletedJobs();
     }
 
     public static void ReapCompleted(TextWriter output)
@@ -88,10 +85,10 @@ public static class BackgroundJobs
         foreach (var job in jobsToReap)
         {
             char marker = GetJobMarker(job.Number, currentJobNumber, previousJobNumber);
-            output.WriteLine($"[{job.Number}]{marker}  {FormatStatus("Done")}{job.Command}");
-            Jobs.Remove(job);
-            job.Process.Dispose();
+            WriteJob(output, job, marker);
         }
+
+        RemoveCompletedJobs();
     }
 
     private static char GetJobMarker(int jobNumber, int? currentJobNumber, int? previousJobNumber)
@@ -109,6 +106,25 @@ public static class BackgroundJobs
     {
         int width = status == "Done" ? 21 : 24;
         return status.PadRight(width);
+    }
+
+    private static void WriteJob(TextWriter output, BackgroundJob job, char marker)
+    {
+        string command = job.IsRunning ? job.Command + " &" : job.Command;
+        output.WriteLine($"[{job.Number}]{marker}  {FormatStatus(job.Status)}{command}");
+    }
+
+    private static void RemoveCompletedJobs()
+    {
+        var completedJobs = Jobs
+            .Where(job => !job.IsRunning)
+            .ToList();
+
+        foreach (var job in completedJobs)
+        {
+            Jobs.Remove(job);
+            job.Process.Dispose();
+        }
     }
 
 }
