@@ -17,6 +17,7 @@ public sealed class ShellApp
         {
             while (true)
             {
+                BackgroundJobs.ReapCompleted(Console.Out);
                 Console.Write("$ ");
                 string input = _reader.ReadLine();
 

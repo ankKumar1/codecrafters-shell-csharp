@@ -42,27 +42,56 @@ public static class BackgroundJobs
 
     public static void ListRunning(TextWriter output)
     {
-        var jobsToDisplay = Jobs
+        ReapCompleted(output);
+
+        var runningJobs = Jobs
+            .Where(job => job.IsRunning)
             .OrderBy(job => job.Number)
             .ToList();
 
-        if (jobsToDisplay.Count == 0)
+        if (runningJobs.Count == 0)
             return;
 
-        int? currentJobNumber = jobsToDisplay.Count > 0
-            ? jobsToDisplay[^1].Number
+        int? currentJobNumber = runningJobs.Count > 0
+            ? runningJobs[^1].Number
             : null;
-        int? previousJobNumber = jobsToDisplay.Count >= 2
-            ? jobsToDisplay[^2].Number
+        int? previousJobNumber = runningJobs.Count >= 2
+            ? runningJobs[^2].Number
             : null;
 
-        foreach (var job in jobsToDisplay)
+        foreach (var job in runningJobs)
         {
             char marker = GetJobMarker(job.Number, currentJobNumber, previousJobNumber);
             output.WriteLine($"[{job.Number}]{marker}  {FormatStatus(job.Status)}{job.Command}");
         }
+    }
 
-        RemoveCompletedJobs();
+    public static void ReapCompleted(TextWriter output)
+    {
+        var jobsToReap = Jobs
+            .Where(job => !job.IsRunning)
+            .OrderBy(job => job.Number)
+            .ToList();
+
+        if (jobsToReap.Count == 0)
+            return;
+
+        var jobsInStartOrder = Jobs
+            .OrderBy(job => job.Number)
+            .ToList();
+
+        int? currentJobNumber = jobsInStartOrder[^1].Number;
+        int? previousJobNumber = jobsInStartOrder.Count >= 2
+            ? jobsInStartOrder[^2].Number
+            : null;
+
+        foreach (var job in jobsToReap)
+        {
+            char marker = GetJobMarker(job.Number, currentJobNumber, previousJobNumber);
+            output.WriteLine($"[{job.Number}]{marker}  {FormatStatus("Done")}{job.Command}");
+            Jobs.Remove(job);
+            job.Process.Dispose();
+        }
     }
 
     private static char GetJobMarker(int jobNumber, int? currentJobNumber, int? previousJobNumber)
@@ -82,8 +111,4 @@ public static class BackgroundJobs
         return status.PadRight(width);
     }
 
-    private static void RemoveCompletedJobs()
-    {
-        Jobs.RemoveAll(job => !job.IsRunning);
-    }
 }
