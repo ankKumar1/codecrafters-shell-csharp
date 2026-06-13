@@ -5,7 +5,6 @@ namespace CodeCrafters.Shell.Commands;
 public static class BackgroundJobs
 {
     private static readonly List<BackgroundJob> Jobs = [];
-    private static int _nextJobNumber = 1;
 
     public static bool TryStart(List<string> parts)
     {
@@ -33,11 +32,25 @@ public static class BackgroundJobs
         if (process == null)
             return true;
 
-        int jobNumber = _nextJobNumber++;
+        int jobNumber = GetNextAvailableJobNumber();
         Jobs.Add(new BackgroundJob(jobNumber, process, commandText));
 
         Console.WriteLine($"[{jobNumber}] {process.Id}");
         return true;
+    }
+
+    private static int GetNextAvailableJobNumber()
+    {
+        var assignedNumbers = Jobs
+            .Select(job => job.Number)
+            .ToHashSet();
+
+        int jobNumber = 1;
+
+        while (assignedNumbers.Contains(jobNumber))
+            jobNumber++;
+
+        return jobNumber;
     }
 
     public static void ListRunning(TextWriter output)
