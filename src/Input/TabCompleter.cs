@@ -27,7 +27,7 @@ public sealed class TabCompleter
             _lastTabPrefix = text;
         }
 
-        var matches = Utils.AutoCompleteBuiltins
+        var matches = Utils.Builtins
             .Where(builtin => builtin.StartsWith(text, StringComparison.Ordinal))
             .Concat(FindExecutablesStartingWith(text))
             .Distinct()
