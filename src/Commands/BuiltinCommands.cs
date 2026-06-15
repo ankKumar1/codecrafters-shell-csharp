@@ -34,6 +34,9 @@ public static class BuiltinCommands
             case "jobs":
                 Jobs(args, output);
                 return true;
+            case "complete":
+                Complete(args);
+                return true;
             default:
                 return false;
         }
@@ -125,5 +128,15 @@ public static class BuiltinCommands
     public static void Jobs(string[] args, TextWriter output)
     {
         BackgroundJobs.ListRunning(output);
+    }
+
+    public static void Complete(string[] args)
+    {
+        if (args.Length >= 2 && args[0] == "-p")
+        {
+            string commandName = args[1];
+            Console.WriteLine($"complete: {commandName}: no completion specification");
+        }
+
     }
 }

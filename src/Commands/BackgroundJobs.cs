@@ -1,3 +1,4 @@
+using src.Models;
 using System.Diagnostics;
 
 namespace CodeCrafters.Shell.Commands;

@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace CodeCrafters.Shell.Commands;
+namespace src.Models;
 
 public sealed class BackgroundJob
 {
