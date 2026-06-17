@@ -47,23 +47,19 @@ public class Completion
 
         try
         {
-            using var process = new Process();
+            using var output = new MemoryStream();
 
-            process.StartInfo = new ProcessStartInfo
-            {
-                FileName = script,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false
-            };
+            ExternalProgramRunner.Run(
+                path: script,
+                commandName: command,
+                args: Array.Empty<string>(),
+                output: output);
 
-            process.Start();
+            output.Position = 0;
 
-            string? completion = process.StandardOutput.ReadLine();
+            using var reader = new StreamReader(output);
 
-            process.WaitForExit();
-
-            return completion;
+            return reader.ReadLine();
         }
         catch
         {
