@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -36,6 +37,37 @@ public class Completion
             {
                 Console.Error.WriteLine($"complete: {command}: no completion specification");
             }
+        }
+    }
+
+    public static string? GetCompletion(string command)
+    {
+        if (!_completions.TryGetValue(command, out var script))
+            return null;
+
+        try
+        {
+            using var process = new Process();
+
+            process.StartInfo = new ProcessStartInfo
+            {
+                FileName = script,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false
+            };
+
+            process.Start();
+
+            string? completion = process.StandardOutput.ReadLine();
+
+            process.WaitForExit();
+
+            return completion;
+        }
+        catch
+        {
+            return null;
         }
     }
 

@@ -13,6 +13,24 @@ public sealed class TabCompleter
     {
         string text = buffer.ToString();
 
+        if (text.EndsWith(' '))
+        {
+            string command = text.TrimEnd();
+
+            string? completion = Completion.GetCompletion(command);
+
+            if (!string.IsNullOrEmpty(completion))
+            {
+                ReplaceBufferWithText(
+                    buffer,
+                    $"{command} {completion} ");
+
+                ResetTabState();
+                return;
+            }
+        }
+
+
         int lastSpaceIndex = text.LastIndexOf(' ');
 
         if (lastSpaceIndex != -1)
