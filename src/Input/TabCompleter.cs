@@ -13,41 +13,47 @@ public sealed class TabCompleter
     {
         string text = buffer.ToString();
 
-        if (text.EndsWith(' '))
+        if (text.Contains(' '))
         {
 
-            string[] parts = text.Split(' ', StringSplitOptions.None);
+            var tokens = text.Split(' ', StringSplitOptions.None);
 
-            string command = parts[0];
-
-            string currentWord = parts[^1];
-
-            string previousWord =
-                parts.Length >= 3
-                    ? parts[^2]
-                    : string.Empty;
-
-            var completions =
-                Completion.GetCompletion(
-                    command,
-                    currentWord,
-                    previousWord);
-
-            if (completions.Count == 1)
+            if (tokens.Length >= 2)
             {
-                string completion = completions[0];
+                string command = tokens[0];
+                string currentWord = tokens[^1];
 
-                string completedText =
-                    text[..(text.Length - currentWord.Length)]
-                    + completion
-                    + " ";
+                string previousWord =
+                    tokens.Length >= 3
+                        ? tokens[^2]
+                        : string.Empty;
 
-                ReplaceBufferWithText(buffer, completedText);
-                ResetTabState();
-                return;
+                var completions =
+                    Completion.GetCompletion(
+                        command,
+                        currentWord,
+                        previousWord);
+
+                if (completions.Count == 1)
+                {
+                    string completion = completions[0];
+
+                    int startIndex =
+                        text.Length - currentWord.Length;
+
+                    string completedText =
+                        text[..startIndex] +
+                        completion +
+                        " ";
+
+                    ReplaceBufferWithText(
+                        buffer,
+                        completedText);
+
+                    return;
+                }
             }
         }
-
 
         int lastSpaceIndex = text.LastIndexOf(' ');
 
@@ -92,6 +98,7 @@ public sealed class TabCompleter
         }
 
         HandleMultipleMatches(buffer, matches);
+
     }
 
     private void CompleteFilename(StringBuilder buffer, string text, int prefixStartIndex)
