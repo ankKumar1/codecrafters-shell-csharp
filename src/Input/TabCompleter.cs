@@ -15,16 +15,34 @@ public sealed class TabCompleter
 
         if (text.EndsWith(' '))
         {
-            string command = text.TrimEnd();
 
-            string? completion = Completion.GetCompletion(command);
+            string[] parts = text.Split(' ', StringSplitOptions.None);
 
-            if (!string.IsNullOrEmpty(completion))
+            string command = parts[0];
+
+            string currentWord = parts[^1];
+
+            string previousWord =
+                parts.Length >= 3
+                    ? parts[^2]
+                    : string.Empty;
+
+            var completions =
+                Completion.GetCompletion(
+                    command,
+                    currentWord,
+                    previousWord);
+
+            if (completions.Count == 1)
             {
-                ReplaceBufferWithText(
-                    buffer,
-                    $"{command} {completion} ");
+                string completion = completions[0];
 
+                string completedText =
+                    text[..(text.Length - currentWord.Length)]
+                    + completion
+                    + " ";
+
+                ReplaceBufferWithText(buffer, completedText);
                 ResetTabState();
                 return;
             }

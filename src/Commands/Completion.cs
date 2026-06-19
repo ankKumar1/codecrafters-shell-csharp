@@ -40,10 +40,13 @@ public class Completion
         }
     }
 
-    public static string? GetCompletion(string command)
+    public static List<string> GetCompletion(
+    string command,
+    string currentWord,
+    string previousWord)
     {
         if (!_completions.TryGetValue(command, out var script))
-            return null;
+            return [];
 
         try
         {
@@ -52,18 +55,33 @@ public class Completion
             ExternalProgramRunner.Run(
                 path: script,
                 commandName: command,
-                args: Array.Empty<string>(),
+                args:
+                [
+                    command,
+                currentWord,
+                previousWord
+                ],
                 output: output);
 
             output.Position = 0;
 
             using var reader = new StreamReader(output);
 
-            return reader.ReadLine();
+            List<string> completions = [];
+
+            while (!reader.EndOfStream)
+            {
+                string? line = reader.ReadLine();
+
+                if (!string.IsNullOrWhiteSpace(line))
+                    completions.Add(line);
+            }
+
+            return completions;
         }
         catch
         {
-            return null;
+            return [];
         }
     }
 
