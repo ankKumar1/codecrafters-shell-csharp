@@ -43,7 +43,8 @@ public class Completion
     public static List<string> GetCompletion(
     string command,
     string currentWord,
-    string previousWord)
+    string previousWord,
+    string line)
     {
         if (!_completions.TryGetValue(command, out var script))
             return [];
@@ -61,7 +62,12 @@ public class Completion
                 currentWord,
                 previousWord
                 ],
-                output: output);
+                output: output,
+                 environment: new Dictionary<string, string>
+                 {
+                     ["COMP_LINE"] = line,
+                     ["COMP_POINT"] = Encoding.UTF8.GetByteCount(line).ToString()
+                 });
 
             output.Position = 0;
 
@@ -71,10 +77,10 @@ public class Completion
 
             while (!reader.EndOfStream)
             {
-                string? line = reader.ReadLine();
+                string? words = reader.ReadLine();
 
-                if (!string.IsNullOrWhiteSpace(line))
-                    completions.Add(line);
+                if (!string.IsNullOrWhiteSpace(words))
+                    completions.Add(words);
             }
 
             return completions;

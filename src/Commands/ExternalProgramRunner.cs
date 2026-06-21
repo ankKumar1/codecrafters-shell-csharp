@@ -9,9 +9,10 @@ public static class ExternalProgramRunner
         string commandName,
         string[] args,
         Stream? output = null,
-        Stream? error = null)
+        Stream? error = null,
+        Dictionary<string, string>? environment = null)
     {
-        ProcessStartInfo startInfo = CreateStartInfo(path, commandName, args);
+        ProcessStartInfo startInfo = CreateStartInfo(path, commandName, args, environment);
         startInfo.RedirectStandardOutput = output != null;
         startInfo.RedirectStandardError = error != null;
 
@@ -45,7 +46,7 @@ public static class ExternalProgramRunner
         }
     }
 
-    private static ProcessStartInfo CreateStartInfo(string path, string commandName, string[] args)
+    private static ProcessStartInfo CreateStartInfo(string path, string commandName, string[] args, Dictionary<string, string>? environment = null)
     {
         ProcessStartInfo startInfo = new()
         {
@@ -61,6 +62,12 @@ public static class ExternalProgramRunner
 
         startInfo.ArgumentList.Add("-c");
         startInfo.ArgumentList.Add(commandLine);
+
+        if (environment != null)
+        {
+            foreach (var pair in environment)
+                startInfo.Environment[pair.Key] = pair.Value;
+        }
 
         return startInfo;
     }

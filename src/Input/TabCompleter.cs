@@ -32,7 +32,8 @@ public sealed class TabCompleter
                     Completion.GetCompletion(
                         command,
                         currentWord,
-                        previousWord);
+                        previousWord,
+                        text);
 
                 if (completions.Count == 1)
                 {
