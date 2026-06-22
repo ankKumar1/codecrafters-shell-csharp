@@ -10,7 +10,7 @@ public sealed class TabCompleter
     private bool _waitingForSecondTab;
 
     public void Complete(StringBuilder buffer)
-    {
+        {
         string text = buffer.ToString();
 
         if (text.Contains(' '))
@@ -23,7 +23,7 @@ public sealed class TabCompleter
                 string command = tokens[0];
                 string currentWord = tokens[^1];
 
-                string previousWord = tokens.Length >= 3 ? tokens[^2]: string.Empty;
+                string previousWord = tokens.Length > 1 ? tokens[^2]: string.Empty;
 
                 var completions =Completion.GetCompletion(command, currentWord, previousWord, text);
 
