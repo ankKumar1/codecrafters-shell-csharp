@@ -23,34 +23,34 @@ public sealed class TabCompleter
                 string command = tokens[0];
                 string currentWord = tokens[^1];
 
-                string previousWord =
-                    tokens.Length >= 3
-                        ? tokens[^2]
-                        : string.Empty;
+                string previousWord = tokens.Length >= 3 ? tokens[^2]: string.Empty;
 
-                var completions =
-                    Completion.GetCompletion(
-                        command,
-                        currentWord,
-                        previousWord,
-                        text);
+                var completions =Completion.GetCompletion(command, currentWord, previousWord, text);
 
                 if (completions.Count == 1)
                 {
                     string completion = completions[0];
+                    int startIndex = text.Length - currentWord.Length;
+                    string completedText = text[..startIndex] + completion + " ";
+                    ReplaceBufferWithText(buffer, completedText);
+                    return;
+                }
 
-                    int startIndex =
-                        text.Length - currentWord.Length;
+                if (completions.Count > 1)
+                {
+                    string longPrefix = LongestCommonPrefix(completions);
 
-                    string completedText =
-                        text[..startIndex] +
-                        completion +
-                        " ";
+                    if (longPrefix.Length > currentWord.Length)
+                    {
+                        ReplaceBufferWithText(
+                            buffer,
+                            text[..(text.Length - currentWord.Length)] + longPrefix);
 
-                    ReplaceBufferWithText(
-                        buffer,
-                        completedText);
+                        ResetTabState();
+                        return;
+                    }
 
+                    HandleMultipleMatches(buffer, completions);
                     return;
                 }
             }
@@ -88,6 +88,7 @@ public sealed class TabCompleter
             ResetTabState();
             return;
         }
+
 
         string longestPrefix = LongestCommonPrefix(matches);
 
