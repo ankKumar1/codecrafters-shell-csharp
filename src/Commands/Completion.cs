@@ -38,13 +38,15 @@ public class Completion
                 Console.Error.WriteLine($"complete: {command}: no completion specification");
             }
         }
+
+        if (args[0] == "-r" && args.Length >= 2)
+        {
+            _completions.Remove(args[1]);
+        }
+        
     }
 
-    public static List<string> GetCompletion(
-    string command,
-    string currentWord,
-    string previousWord,
-    string line)
+    public static List<string> GetCompletion(string command, string currentWord, string previousWord, string line)
     {
         if (!_completions.TryGetValue(command, out var script))
             return [];
