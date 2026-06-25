@@ -37,6 +37,9 @@ public static class BuiltinCommands
             case "complete":
                 Complete(args);
                 return true;
+            case "declare":
+                Declare(args);
+                return true;
             default:
                 return false;
         }
@@ -133,5 +136,10 @@ public static class BuiltinCommands
     public static void Complete(string[] args)
     {
         Completion.Complete(args);
+    }
+
+    public static void Declare(string[] args)
+    {
+        DeclareCommand.Declare(args);
     }
 }
