@@ -31,6 +31,12 @@ public static class DeclareCommand
             string name = arg[..index];
             string value = arg[(index + 1)..];
 
+            if (!IsValidIdentifier(name))
+            {
+                Console.Error.WriteLine($"declare: `{arg}': not a valid identifier");
+                continue;
+            }
+
             _variables[name] = value;
         }
     }
@@ -50,5 +56,22 @@ public static class DeclareCommand
     public static bool TryGetVariable(string name, out string value)
     {
         return _variables.TryGetValue(name, out value!);
+    }
+
+    private static bool IsValidIdentifier(string name)
+    {
+        if (string.IsNullOrEmpty(name))
+            return false;
+
+        if (!(char.IsLetter(name[0]) || name[0] == '_'))
+            return false;
+
+        for (int i = 1; i < name.Length; i++)
+        {
+            if (!(char.IsLetterOrDigit(name[i]) || name[i] == '_'))
+                return false;
+        }
+
+        return true;
     }
 }
