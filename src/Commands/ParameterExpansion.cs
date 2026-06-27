@@ -1,4 +1,5 @@
-﻿using System;
+﻿using CodeCrafters.Shell.Utilities;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,8 +9,6 @@ namespace CodeCrafters.Shell.Commands;
 
 public static class DeclareCommand
 {
-    private static readonly Dictionary<string, string> _variables = [];
-
     public static void Declare(string[] args)
     {
         if (args.Length == 0)
@@ -37,13 +36,13 @@ public static class DeclareCommand
                 continue;
             }
 
-            _variables[name] = value;
+            Utils.Variables[name] = value;
         }
     }
 
     private static void PrintVariable(string name)
     {
-        if (_variables.TryGetValue(name, out var value))
+        if (Utils.Variables.TryGetValue(name, out var value))
         {
             Console.WriteLine($"declare -- {name}=\"{value}\"");
         }
@@ -55,7 +54,7 @@ public static class DeclareCommand
 
     public static bool TryGetVariable(string name, out string value)
     {
-        return _variables.TryGetValue(name, out value!);
+        return Utils.Variables.TryGetValue(name, out value!);
     }
 
     private static bool IsValidIdentifier(string name)

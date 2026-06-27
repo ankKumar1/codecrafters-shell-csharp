@@ -1,3 +1,4 @@
+using CodeCrafters.Shell.Utilities;
 using System.Text;
 
 namespace CodeCrafters.Shell.Parsing;
@@ -81,7 +82,7 @@ public static class CommandParser
                     }
                     else
                     {
-                        args.Add(current.ToString());
+                        args.Add(Utils.Expand(currentToken));
                     }
 
                     current.Clear();
@@ -100,7 +101,7 @@ public static class CommandParser
             {
                 if (current.Length > 0)
                 {
-                    args.Add(current.ToString());
+                    args.Add(Utils.Expand(current.ToString()));
                     current.Clear();
                 }
             }
@@ -111,7 +112,9 @@ public static class CommandParser
         }
 
         if (current.Length > 0)
-            args.Add(current.ToString());
+        {
+            args.Add(Utils.Expand(current.ToString()));
+        }
 
         return args;
     }
