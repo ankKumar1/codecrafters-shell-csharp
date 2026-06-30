@@ -13,6 +13,17 @@ public static class CommandParser
         bool inSingleQuote = false;
         bool inDoubleQuote = false;
 
+        void AddToken(string token)
+        {
+            string expanded = Utils.Expand(token);
+
+            // Skip arguments that are only an unset variable
+            if (expanded.Length == 0 && Utils.IsPureVariableReference(token))
+                return;
+
+            args.Add(expanded);
+        }
+
         for (int i = 0; i < input.Length; i++)
         {
             char c = input[i];
@@ -82,7 +93,7 @@ public static class CommandParser
                     }
                     else
                     {
-                        args.Add(Utils.Expand(currentToken));
+                        AddToken(currentToken);
                     }
 
                     current.Clear();
@@ -101,7 +112,7 @@ public static class CommandParser
             {
                 if (current.Length > 0)
                 {
-                    args.Add(Utils.Expand(current.ToString()));
+                    AddToken(current.ToString());
                     current.Clear();
                 }
             }
@@ -113,7 +124,7 @@ public static class CommandParser
 
         if (current.Length > 0)
         {
-            args.Add(Utils.Expand(current.ToString()));
+            AddToken(current.ToString());
         }
 
         return args;

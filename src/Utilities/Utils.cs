@@ -18,4 +18,9 @@ public static class Utils
             return Variables.TryGetValue(name, out var value) ? value : string.Empty;
         });
     }
+
+    public static bool IsPureVariableReference(string text)
+    {
+        return VariableRegex.IsMatch(text);
+    }
 }
